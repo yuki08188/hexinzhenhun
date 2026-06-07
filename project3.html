@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>探测车模拟器 - 核芯震魂</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: #ffffff;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background: #326de6;
+            color: #ffffff;
+            padding: 20px 0;
+            text-align: center;
+        }
+        header h1 { margin: 0; font-size: 1.6rem; }
+        header p { margin: 6px 0 0; font-size: 0.9rem; opacity: 0.85; }
+
+        main {
+            max-width: 700px;
+            margin: 28px auto;
+            padding: 28px;
+            background: #fff;
+            box-shadow: 0 2px 8px rgba(30,60,120,0.06);
+            border-radius: 24px;
+        }
+
+        /* ── Canvas ── */
+        #arena-wrap {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            background: #1a1f2e;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #326de6;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ── HUD ── */
+        .hud {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .hud-card {
+            flex: 1;
+            min-width: 130px;
+            background: #f0f4ff;
+            border-radius: 10px;
+            padding: 12px 16px;
+            border-left: 4px solid #326de6;
+        }
+        .hud-card .label { font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+        .hud-card .value { font-size: 1.3rem; font-weight: bold; color: #326de6; margin-top: 2px; }
+        .hud-card .value.warn { color: #e05c2a; }
+
+        /* ── Motor indicators ── */
+        .motors {
+            display: flex;
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .motor-box {
+            flex: 1;
+            border-radius: 10px;
+            padding: 10px 14px;
+            background: #f0f4ff;
+            border: 2px solid #cdd8f5;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        .motor-box.active {
+            background: #e8f0ff;
+            border-color: #326de6;
+        }
+        .motor-box .m-label { font-size: 0.75rem; color: #666; }
+        .motor-box .m-bar-wrap {
+            height: 8px;
+            background: #dde3f5;
+            border-radius: 4px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .motor-box .m-bar {
+            height: 100%;
+            background: #326de6;
+            border-radius: 4px;
+            transition: width 0.15s;
+        }
+        .motor-box .m-pwm { font-size: 0.8rem; color: #326de6; font-weight: bold; margin-top: 4px; }
+
+        /* ── Controls ── */
+        .controls-section {
+            margin-top: 16px;
+            background: #f8f9ff;
+            border-radius: 10px;
+            padding: 14px 16px;
+        }
+        .controls-section h3 { margin: 0 0 10px; font-size: 0.9rem; color: #444; }
+        .ctrl-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 48px);
+            grid-template-rows: repeat(3, 48px);
+            gap: 6px;
+            justify-content: start;
+        }
+        .ctrl-btn {
+            width: 48px; height: 48px;
+            border: 2px solid #cdd8f5;
+            border-radius: 8px;
+            background: #fff;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            transition: background 0.1s, border-color 0.1s;
+        }
+        .ctrl-btn:active, .ctrl-btn.pressed {
+            background: #326de6;
+            border-color: #326de6;
+            color: #fff;
+        }
+        .ctrl-btn.empty { visibility: hidden; }
+
+        .info-row {
+            margin-top: 14px;
+            font-size: 0.82rem;
+            color: #666;
+            line-height: 1.6;
+        }
+        .info-row span { color: #326de6; font-weight: bold; }
+
+        /* ── reset btn ── */
+        .action-row { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+        .action-btn {
+            padding: 9px 20px;
+            border-radius: 6px;
+            border: 2px solid #326de6;
+            background: #fff;
+            color: #326de6;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .action-btn:hover { background: #326de6; color: #fff; }
+        .action-btn.primary { background: #326de6; color: #fff; }
+        .action-btn.primary:hover { background: #2248b5; border-color: #2248b5; }
+
+        hr { border: 0; border-top: 1px solid #eee; margin-top: 28px; }
+        .back-btn {
+            display: inline-block;
+            margin-top: 16px;
+            color: #326de6;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .back-btn:hover { color: #2248b5; }
+
+        /* ── Source code panel ── */
+        .code-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 24px;
+            cursor: pointer;
+            user-select: none;
+        }
+        .code-toggle-btn {
+            padding: 9px 20px;
+            border-radius: 6px;
+            border: 2px solid #326de6;
+            background: #fff;
+            color: #326de6;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .code-toggle-btn:hover { background: #326de6; color: #fff; }
+        .code-toggle-btn .arrow {
+            display: inline-block;
+            transition: transform 0.25s;
+            font-style: normal;
+        }
+        .code-toggle-btn.open .arrow { transform: rotate(90deg); }
+        .code-panel {
+            display: none;
+            margin-top: 14px;
+            background: #0d1117;
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid #30363d;
+            position: relative;
+        }
+        .code-panel.visible { display: block; }
+        .code-panel pre {
+            color: #c9d1d9;
+            font-family: Consolas, 'Cascadia Code', Monaco, monospace;
+            font-size: 0.82rem;
+            line-height: 1.65;
+            margin: 0;
+            white-space: pre-wrap;
+            overflow-wrap: break-word;
+        }
+        /* syntax highlight groups */
+        .code-panel .kw  { color: #ff7b72; }   /* keywords */
+        .code-panel .ty  { color: #79c0ff; }   /* types */
+        .code-panel .fn  { color: #d2a8ff; }   /* functions */
+        .code-panel .num { color: #79c0ff; }   /* numbers */
+        .code-panel .cm  { color: #8b949e; font-style: italic; } /* comments */
+        .code-panel .str { color: #a5d6ff; }   /* strings */
+        .copy-btn {
+            position: absolute;
+            top: 12px; right: 14px;
+            padding: 5px 12px;
+            border-radius: 5px;
+            border: 1px solid #30363d;
+            background: #21262d;
+            color: #8b949e;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+        }
+        .copy-btn:hover { background: #326de6; color: #fff; border-color: #326de6; }
+        .code-lang-tag {
+            position: absolute;
+            top: 12px; left: 14px;
+            font-size: 0.72rem;
+            color: #8b949e;
+            font-family: monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        /* score flash */
+        @keyframes flash { 0%{opacity:1} 50%{opacity:0.3} 100%{opacity:1} }
+        .flash { animation: flash 0.4s; }
+    </style>
+</head>
+<body>
+<header>
+    <h1>探测车模拟器</h1>
+    <p>基于 VL53L0X 激光测距 · 双马达控制逻辑复现</p>
+</header>
+<main>
+
+    <div id="arena-wrap">
+        <canvas id="arena"></canvas>
+    </div>
+
+    <div class="hud">
+        <div class="hud-card">
+            <div class="label">VL53L0X 距离</div>
+            <div class="value" id="hud-dist">— mm</div>
+        </div>
+        <div class="hud-card">
+            <div class="label">模式</div>
+            <div class="value" id="hud-mode">待机</div>
+        </div>
+        <div class="hud-card">
+            <div class="label">收集星星</div>
+            <div class="value" id="hud-score">0</div>
+        </div>
+        <div class="hud-card">
+            <div class="label">碰壁次数</div>
+            <div class="value warn" id="hud-hits">0</div>
+        </div>
+    </div>
+
+    <div class="motors">
+        <div class="motor-box" id="mbox-a">
+            <div class="m-label">马达 A（AIN1/AIN2 · PWM5）</div>
+            <div class="m-bar-wrap"><div class="m-bar" id="mbar-a" style="width:0%"></div></div>
+            <div class="m-pwm" id="mpwm-a">PWM 0</div>
+        </div>
+        <div class="motor-box" id="mbox-b">
+            <div class="m-label">马达 B（BIN1/BIN2 · PWM6）</div>
+            <div class="m-bar-wrap"><div class="m-bar" id="mbar-b" style="width:0%"></div></div>
+            <div class="m-pwm" id="mpwm-b">PWM 0</div>
+        </div>
+    </div>
+
+    <div class="controls-section">
+        <h3>手动控制（键盘 WASD / 方向键 · 或点击按钮）</h3>
+        <div class="ctrl-grid">
+            <div class="ctrl-btn empty"></div>
+            <div class="ctrl-btn" id="btn-up"   data-key="ArrowUp">▲</div>
+            <div class="ctrl-btn empty"></div>
+            <div class="ctrl-btn" id="btn-left"  data-key="ArrowLeft">◀</div>
+            <div class="ctrl-btn" id="btn-down"  data-key="ArrowDown">▼</div>
+            <div class="ctrl-btn" id="btn-right" data-key="ArrowRight">▶</div>
+        </div>
+        <div class="info-row" style="margin-top:10px;">
+            传感器检测正前方障碍物距离。当距离 <span>&gt; 30 mm</span>：<span>马达A转、马达B停</span>（直行）；
+            距离 <span>≤ 30 mm</span>：<span>马达A停、马达B转</span>（自动转向避障）。
+        </div>
+    </div>
+
+    <div class="action-row">
+        <button class="action-btn primary" id="btn-reset">重置地图</button>
+        <button class="action-btn" id="btn-auto" >自动驾驶</button>
+    </div>
+
+    <!-- Source code section -->
+    <hr>
+    <button class="code-toggle-btn" id="code-toggle-btn">
+        <i class="arrow">▶</i> 查看硬件源码
+    </button>
+
+    <div class="code-panel" id="code-panel">
+        <span class="code-lang-tag">Arduino C++</span>
+        <button class="copy-btn" id="copy-btn">复制</button>
+        <pre id="code-content"><span class="cm">// ── 依赖库 ──────────────────────────────────────────</span>
+<span class="kw">#include</span> <span class="str">&lt;Wire.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;VL53L0X.h&gt;</span>
+
+<span class="ty">VL53L0X</span> sensor;
+
+<span class="cm">// ── A 马达引脚 ─────────────────────────────────────</span>
+<span class="kw">const</span> <span class="ty">int</span> <span class="fn">STBY</span> = <span class="num">2</span>;
+<span class="kw">const</span> <span class="ty">int</span> <span class="fn">PWMA</span> = <span class="num">5</span>;
+<span class="kw">const</span> <span class="ty">int</span> <span class="fn">AIN1</span> = <span class="num">4</span>;
+<span class="kw">const</span> <span class="ty">int</span> <span class="fn">AIN2</span> = <span class="num">3</span>;
+
+<span class="cm">// ── B 马达引脚 ─────────────────────────────────────</span>
+<span class="kw">const</span> <span class="ty">int</span> <span class="fn">PWMB</span> = <span class="num">6</span>;
+<span class="kw">const</span> <span class="ty">int</span> <span class="fn">BIN1</span> = <span class="num">7</span>;
+<span class="kw">const</span> <span class="ty">int</span> <span class="fn">BIN2</span> = <span class="num">8</span>;
+
+<span class="ty">void</span> <span class="fn">setup</span>() {
+  Serial.<span class="fn">begin</span>(<span class="num">9600</span>);
+  Wire.<span class="fn">begin</span>();
+
+  <span class="fn">pinMode</span>(STBY, OUTPUT);
+  <span class="fn">pinMode</span>(PWMA, OUTPUT);
+  <span class="fn">pinMode</span>(AIN1, OUTPUT);
+  <span class="fn">pinMode</span>(AIN2, OUTPUT);
+
+  <span class="fn">pinMode</span>(PWMB, OUTPUT);
+  <span class="fn">pinMode</span>(BIN1, OUTPUT);
+  <span class="fn">pinMode</span>(BIN2, OUTPUT);
+
+  <span class="kw">if</span> (!sensor.<span class="fn">init</span>()) {
+    Serial.<span class="fn">println</span>(<span class="str">"Error: Sensor not found!"</span>);
+    <span class="kw">while</span> (<span class="num">1</span>);
+  }
+
+  sensor.<span class="fn">startContinuous</span>();
+  <span class="fn">digitalWrite</span>(STBY, HIGH);
+  Serial.<span class="fn">println</span>(<span class="str">"Switch System Ready!"</span>);
+}
+
+<span class="ty">void</span> <span class="fn">loop</span>() {
+  <span class="ty">int</span> distance = sensor.<span class="fn">readRangeContinuousMillimeters</span>();
+
+  Serial.<span class="fn">print</span>(<span class="str">"Dist: "</span>);
+  Serial.<span class="fn">print</span>(distance);
+  Serial.<span class="fn">println</span>(<span class="str">" mm"</span>);
+
+  <span class="kw">if</span> (distance &gt; <span class="num">30</span>) {
+    <span class="cm">// 【30mm 以外】：A 转，B 停</span>
+    <span class="fn">digitalWrite</span>(AIN1, HIGH);
+    <span class="fn">digitalWrite</span>(AIN2, LOW);
+    <span class="fn">analogWrite</span>(PWMA, <span class="num">255</span>);
+
+    <span class="fn">digitalWrite</span>(BIN1, LOW);
+    <span class="fn">digitalWrite</span>(BIN2, LOW);
+    <span class="fn">analogWrite</span>(PWMB, <span class="num">0</span>);
+  } <span class="kw">else</span> {
+    <span class="cm">// 【30mm 以内】：A 停，B 转</span>
+    <span class="fn">digitalWrite</span>(AIN1, LOW);
+    <span class="fn">digitalWrite</span>(AIN2, LOW);
+    <span class="fn">analogWrite</span>(PWMA, <span class="num">0</span>);
+
+    <span class="fn">digitalWrite</span>(BIN1, HIGH);
+    <span class="fn">digitalWrite</span>(BIN2, LOW);
+    <span class="fn">analogWrite</span>(PWMB, <span class="num">255</span>);
+  }
+
+  <span class="fn">delay</span>(<span class="num">100</span>);
+}</pre>
+    </div>
+
+    <hr style="margin-top:20px;">
+    <a href="index3.html" class="back-btn">← 返回主页</a>
+</main>
+
+<script>
+(() => {
+    // ── Canvas setup ──────────────────────────────────────────────────────────
+    const canvas = document.getElementById('arena');
+    const ctx    = canvas.getContext('2d');
+    const W = 640, H = 480;
+    canvas.width  = W;
+    canvas.height = H;
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    const THRESHOLD = 30; // mm  (修改后逻辑)
+    const ROVER_R   = 16;
+    const SPEED     = 2.2;
+    const TURN_SPEE = 0.045;
+    const SENSOR_RANGE = 300; // px → scaled to mm for display
+
+    let rover = { x: W/2, y: H/2, angle: -Math.PI/2 };
+    let walls  = [];
+    let stars  = [];
+    let score  = 0;
+    let hits   = 0;
+    let auto   = false;
+    let autoTurn = 1;
+
+    const keys = {};
+
+    // ── Map generation ────────────────────────────────────────────────────────
+    function spawnWalls() {
+        walls = [];
+        // Border walls
+        const B = 20;
+        walls.push({x:0,   y:0,   w:W,   h:B});
+        walls.push({x:0,   y:H-B, w:W,   h:B});
+        walls.push({x:0,   y:0,   w:B,   h:H});
+        walls.push({x:W-B, y:0,   w:B,   h:H});
+        // Inner obstacles
+        const obstacles = [
+            {x:120, y:80,  w:80,  h:20},
+            {x:300, y:60,  w:20,  h:100},
+            {x:440, y:120, w:100, h:20},
+            {x:80,  y:200, w:20,  h:120},
+            {x:200, y:260, w:120, h:20},
+            {x:400, y:220, w:20,  h:100},
+            {x:480, y:300, w:100, h:20},
+            {x:150, y:360, w:80,  h:20},
+            {x:320, y:340, w:20,  h:100},
+            {x:520, y:380, w:80,  h:20},
+        ];
+        walls.push(...obstacles);
+    }
+
+    function spawnStars() {
+        stars = [];
+        const candidates = [
+            [200,150],[450,80],[550,200],[100,300],
+            [350,180],[270,380],[500,330],[160,420],
+            [420,400],[580,120],[80,120],[340,290],
+        ];
+        candidates.forEach(([x,y]) => {
+            if (!collidesWall({x,y}, 12)) stars.push({x,y,taken:false});
+        });
+    }
+
+    function reset() {
+        rover = { x: W/2, y: H/2, angle: -Math.PI/2 };
+        score = 0; hits = 0; auto = false;
+        document.getElementById('btn-auto').textContent = '自动驾驶';
+        spawnWalls();
+        spawnStars();
+        updateHUD(0,'待机');
+    }
+
+    // ── Collision helpers ─────────────────────────────────────────────────────
+    function collidesWall(pos, r) {
+        for (const w of walls) {
+            const cx = Math.max(w.x, Math.min(pos.x, w.x+w.w));
+            const cy = Math.max(w.y, Math.min(pos.y, w.y+w.h));
+            const dx = pos.x - cx, dy = pos.y - cy;
+            if (dx*dx + dy*dy < r*r) return true;
+        }
+        return false;
+    }
+
+    // VL53L0X ray cast in front of rover
+    function castSensor() {
+        const dx = Math.cos(rover.angle);
+        const dy = Math.sin(rover.angle);
+        for (let d = ROVER_R+2; d < SENSOR_RANGE; d += 2) {
+            const px = rover.x + dx*d;
+            const py = rover.y + dy*d;
+            if (px<0||px>W||py<0||py>H) return d;
+            for (const w of walls) {
+                if (px>=w.x && px<=w.x+w.w && py>=w.y && py<=w.y+w.h) return d;
+            }
+        }
+        return SENSOR_RANGE;
+    }
+
+    // ── HUD updaters ──────────────────────────────────────────────────────────
+    function updateHUD(distPx, mode) {
+        // scale: 1px ≈ 0.5mm (arbitrary but feels realistic)
+        const mm = Math.round(distPx * 0.5);
+        document.getElementById('hud-dist').textContent  = mm + ' mm';
+        document.getElementById('hud-mode').textContent  = mode;
+        document.getElementById('hud-score').textContent = score;
+        document.getElementById('hud-hits').textContent  = hits;
+
+        const motorAon = (mode === '直行' || mode === '前进');
+        const motorBon = (mode === '避障转向');
+        const pwmA = motorAon ? 255 : 0;
+        const pwmB = motorBon ? 255 : 0;
+
+        document.getElementById('mbar-a').style.width = (pwmA/255*100)+'%';
+        document.getElementById('mbar-b').style.width = (pwmB/255*100)+'%';
+        document.getElementById('mpwm-a').textContent = 'PWM '+pwmA;
+        document.getElementById('mpwm-b').textContent = 'PWM '+pwmB;
+        document.getElementById('mbox-a').classList.toggle('active', motorAon);
+        document.getElementById('mbox-b').classList.toggle('active', motorBon);
+    }
+
+    // ── Game loop ─────────────────────────────────────────────────────────────
+    function update() {
+        const dist = castSensor();
+        const mmDist = Math.round(dist * 0.5);
+
+        let moved = false;
+        let mode  = '待机';
+
+        if (auto) {
+            // 逻辑同步：只有距离大于30mm才能前进，否则转向
+            if (mmDist > THRESHOLD) {
+                // Motor A: forward
+                const nx = rover.x + Math.cos(rover.angle) * SPEED;
+                const ny = rover.y + Math.sin(rover.angle) * SPEED;
+                if (!collidesWall({x:nx,y:ny}, ROVER_R)) {
+                    rover.x = nx; rover.y = ny;
+                } else {
+                    hits++;
+                    rover.angle += Math.PI * 0.6 * autoTurn;
+                }
+                mode = '直行';
+            } else {
+                // Motor B: turn
+                rover.angle += TURN_SPEE * 3.5 * autoTurn;
+                // randomize turn direction occasionally
+                if (Math.random() < 0.005) autoTurn *= -1;
+                mode = '避障转向';
+            }
+            moved = true;
+        } else {
+            // Manual control
+            let fwd = 0, turn = 0;
+            if (keys['ArrowUp']    || keys['w'] || keys['W']) fwd  =  1;
+            if (keys['ArrowDown']  || keys['s'] || keys['S']) fwd  = -1;
+            if (keys['ArrowLeft']  || keys['a'] || keys['A']) turn = -1;
+            if (keys['ArrowRight'] || keys['d'] || keys['D']) turn =  1;
+
+            if (turn !== 0) rover.angle += TURN_SPEE * turn;
+
+            if (fwd !== 0) {
+                const nx = rover.x + Math.cos(rover.angle) * SPEED * fwd;
+                const ny = rover.y + Math.sin(rover.angle) * SPEED * fwd;
+                if (!collidesWall({x:nx,y:ny}, ROVER_R)) {
+                    rover.x = nx; rover.y = ny;
+                } else {
+                    hits++;
+                }
+                moved = true;
+            }
+
+            if (fwd !== 0 || turn !== 0) {
+                if (mmDist > THRESHOLD) mode = '直行';
+                else mode = '避障转向';
+            }
+        }
+
+        // Collect stars
+        stars.forEach(s => {
+            if (!s.taken) {
+                const dx = rover.x - s.x, dy = rover.y - s.y;
+                if (dx*dx+dy*dy < (ROVER_R+10)**2) { s.taken=true; score++; }
+            }
+        });
+        // Respawn if all collected
+        if (stars.every(s=>s.taken)) spawnStars();
+
+        updateHUD(dist, mode);
+    }
+
+    // ── Rendering ─────────────────────────────────────────────────────────────
+    function draw() {
+        ctx.clearRect(0,0,W,H);
+
+        // background grid
+        ctx.strokeStyle = 'rgba(50,109,230,0.08)';
+        ctx.lineWidth = 1;
+        for (let x=0;x<W;x+=40) { ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
+        for (let y=0;y<H;y+=40) { ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+
+        // walls
+        walls.forEach(w => {
+            ctx.fillStyle = '#223a7a';
+            ctx.fillRect(w.x,w.y,w.w,w.h);
+            ctx.strokeStyle = '#326de6';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(w.x,w.y,w.w,w.h);
+        });
+
+        // stars
+        stars.forEach(s => {
+            if (s.taken) return;
+            ctx.save();
+            ctx.translate(s.x, s.y);
+            ctx.fillStyle = '#ffd94a';
+            ctx.shadowColor = '#ffd94a';
+            ctx.shadowBlur = 10;
+            // draw star shape
+            ctx.beginPath();
+            for (let i=0;i<5;i++){
+                const a = (i*4*Math.PI/5) - Math.PI/2;
+                const b = (i*4*Math.PI/5 + 2*Math.PI/5) - Math.PI/2;
+                ctx.lineTo(Math.cos(a)*9, Math.sin(a)*9);
+                ctx.lineTo(Math.cos(b)*4, Math.sin(b)*4);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        });
+
+        // sensor beam
+        const dist = castSensor();
+        const bx = rover.x + Math.cos(rover.angle)*dist;
+        const by = rover.y + Math.sin(rover.angle)*dist;
+        const mmDist = Math.round(dist*0.5);
+        const beamColor = mmDist > THRESHOLD ? 'rgba(50,180,100,0.5)' : 'rgba(230,80,50,0.6)';
+        ctx.beginPath();
+        ctx.moveTo(rover.x, rover.y);
+        ctx.lineTo(bx, by);
+        ctx.strokeStyle = beamColor;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6,4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // endpoint dot
+        ctx.beginPath();
+        ctx.arc(bx, by, 5, 0, Math.PI*2);
+        ctx.fillStyle = beamColor;
+        ctx.fill();
+
+        // rover body
+        ctx.save();
+        ctx.translate(rover.x, rover.y);
+        ctx.rotate(rover.angle);
+
+        // body
+        ctx.fillStyle = '#326de6';
+        ctx.beginPath();
+        ctx.roundRect(-ROVER_R, -ROVER_R+2, ROVER_R*2, ROVER_R*2-4, 5);
+        ctx.fill();
+
+        // wheels
+        ctx.fillStyle = '#1a3a80';
+        [[-ROVER_R-4,-ROVER_R+2],[-ROVER_R-4,ROVER_R-10],[ROVER_R,ROVER_R-10],[ROVER_R,-ROVER_R+2]].forEach(([wx,wy])=>{
+            ctx.fillRect(wx, wy, 6, 8);
+        });
+
+        // sensor eye (front)
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(ROVER_R-4, 0, 5, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = mmDist > THRESHOLD ? '#2ecc71' : '#e74c3c';
+        ctx.beginPath();
+        ctx.arc(ROVER_R-4, 0, 3, 0, Math.PI*2);
+        ctx.fill();
+
+        // antenna
+        ctx.strokeStyle = '#89aaff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, -ROVER_R);
+        ctx.lineTo(0, -ROVER_R-10);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, -ROVER_R-12, 3, 0, Math.PI*2);
+        ctx.fillStyle = '#89aaff';
+        ctx.fill();
+
+        ctx.restore();
+
+        // distance label on beam
+        ctx.fillStyle = mmDist > THRESHOLD ? '#2ecc71' : '#e05c2a';
+        ctx.font = 'bold 12px monospace';
+        ctx.fillText(mmDist+'mm', bx+8, by-4);
+    }
+
+    function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+    }
+
+    // ── Input ─────────────────────────────────────────────────────────────────
+    document.addEventListener('keydown', e => {
+        keys[e.key] = true;
+        const btn = document.querySelector(`[data-key="${e.key}"]`);
+        if (btn) btn.classList.add('pressed');
+        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+    });
+    document.addEventListener('keyup', e => {
+        keys[e.key] = false;
+        const btn = document.querySelector(`[data-key="${e.key}"]`);
+        if (btn) btn.classList.remove('pressed');
+    });
+
+    // Touch/click buttons
+    document.querySelectorAll('.ctrl-btn[data-key]').forEach(btn => {
+        const k = btn.dataset.key;
+        const down = () => { keys[k]=true;  btn.classList.add('pressed'); };
+        const up   = () => { keys[k]=false; btn.classList.remove('pressed'); };
+        btn.addEventListener('mousedown', down);
+        btn.addEventListener('mouseup',   up);
+        btn.addEventListener('mouseleave',up);
+        btn.addEventListener('touchstart', e=>{e.preventDefault();down();},{passive:false});
+        btn.addEventListener('touchend',   e=>{e.preventDefault();up();},  {passive:false});
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', reset);
+    document.getElementById('btn-auto').addEventListener('click', () => {
+        auto = !auto;
+        document.getElementById('btn-auto').textContent = auto ? '停止自动' : '自动驾驶';
+    });
+
+    // ── Start ─────────────────────────────────────────────────────────────────
+    reset();
+    loop();
+})();
+
+// ── Source code toggle ────────────────────────────────────────────────────────
+document.getElementById('code-toggle-btn').addEventListener('click', function() {
+    this.classList.toggle('open');
+    const panel = document.getElementById('code-panel');
+    panel.classList.toggle('visible');
+    const arrow = this.querySelector('.arrow');
+    const isOpen = panel.classList.contains('visible');
+    this.innerHTML = `<i class="arrow" style="display:inline-block;transition:transform 0.25s;transform:rotate(${isOpen?90:0}deg)">▶</i> ${isOpen ? '收起源码' : '查看硬件源码'}`;
+});
+
+document.getElementById('copy-btn').addEventListener('click', function() {
+    const raw = `#include <Wire.h>\n#include <VL53L0X.h>\n\nVL53L0X sensor;\n\nconst int STBY = 2;\nconst int PWMA = 5;\nconst int AIN1 = 4;\nconst int AIN2 = 3;\n\nconst int PWMB = 6;\nconst int BIN1 = 7;\nconst int BIN2 = 8;\n\nvoid setup() {\n  Serial.begin(9600);\n  Wire.begin();\n  pinMode(STBY, OUTPUT); pinMode(PWMA, OUTPUT);\n  pinMode(AIN1, OUTPUT); pinMode(AIN2, OUTPUT);\n  pinMode(PWMB, OUTPUT); pinMode(BIN1, OUTPUT); pinMode(BIN2, OUTPUT);\n  if (!sensor.init()) { Serial.println("Error: Sensor not found!"); while (1); }\n  sensor.startContinuous();\n  digitalWrite(STBY, HIGH);\n  Serial.println("Switch System Ready!");\n}\n\nvoid loop() {\n  int distance = sensor.readRangeContinuousMillimeters();\n  Serial.print("Dist: "); Serial.print(distance); Serial.println(" mm");\n  if (distance > 30) {\n    digitalWrite(AIN1, HIGH); digitalWrite(AIN2, LOW); analogWrite(PWMA, 255);\n    digitalWrite(BIN1, LOW);  digitalWrite(BIN2, LOW); analogWrite(PWMB, 0);\n  } else {\n    digitalWrite(AIN1, LOW);  digitalWrite(AIN2, LOW); analogWrite(PWMA, 0);\n    digitalWrite(BIN1, HIGH); digitalWrite(BIN2, LOW); analogWrite(PWMB, 255);\n  }\n  delay(100);\n}`;
+    navigator.clipboard.writeText(raw).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = '已复制 ✓';
+        btn.style.background = '#238636';
+        btn.style.color = '#fff';
+        btn.style.borderColor = '#238636';
+        setTimeout(() => {
+            btn.textContent = '复制';
+            btn.style.background = '';
+            btn.style.color = '';
+            btn.style.borderColor = '';
+        }, 2000);
+    });
+});
+</script>
+</body>
+</html>

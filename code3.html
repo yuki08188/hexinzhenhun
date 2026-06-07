@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>硬件控制代码 - 核芯震魂</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: sans-serif; background: #ffffff; margin: 0; padding: 0; }
+        header { background: #326de6; color: #ffffff; padding: 24px 0; text-align: center; }
+        main { max-width: 600px; margin: 32px auto; padding: 32px; background: #fff; box-shadow: 0 2px 8px rgba(30,60,120,0.06); border-radius: 24px; }
+        pre { color: #326de6; background: #f8f9fa; padding: 15px; border-radius: 8px; font-family: Consolas, Monaco, monospace; white-space: pre-wrap; line-height: 1.5; }
+        .back-btn { display: inline-block; margin-top: 20px; color: #326de6; text-decoration: none; font-weight: bold; }
+        .back-btn:hover { color: #2248b5; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>硬件控制代码</h1>
+    </header>
+    <main>
+        <pre>#include &lt;Wire.h&gt;
+#include &lt;VL53L0X.h&gt;
+
+VL53L0X sensor;
+
+// A馬達引腳
+const int STBY = 2; 
+const int PWMA = 5; 
+const int AIN1 = 4;  
+const int AIN2 = 3;  
+
+// B馬達引腳
+const int PWMB = 6;
+const int BIN1 = 7; 
+const int BIN2 = 8; 
+
+void setup() {
+  Serial.begin(9600);
+  Wire.begin();
+  
+  pinMode(STBY, OUTPUT);
+  pinMode(PWMA, OUTPUT);
+  pinMode(AIN1, OUTPUT);
+  pinMode(AIN2, OUTPUT);
+  
+  pinMode(PWMB, OUTPUT);
+  pinMode(BIN1, OUTPUT);
+  pinMode(BIN2, OUTPUT);
+
+  if (!sensor.init()) {
+    Serial.println("Error: Sensor not found!");
+    while (1);
+  }
+  
+  sensor.startContinuous();
+  digitalWrite(STBY, HIGH);
+  Serial.println("Switch System Ready!");
+}
+
+void loop() {
+  int distance = sensor.readRangeContinuousMillimeters();
+  
+  Serial.print("Dist: ");
+  Serial.print(distance);
+  Serial.println(" mm");
+
+  if (distance > 100) {
+    // 【100mm 以外】：A 轉，B 停
+    digitalWrite(AIN1, HIGH);
+    digitalWrite(AIN2, LOW);
+    analogWrite(PWMA, 255);   
+    
+    digitalWrite(BIN1, LOW);
+    digitalWrite(BIN2, LOW);
+    analogWrite(PWMB, 0);   
+  } 
+  else {
+    // 【100mm 以內】：A 停，B 轉
+    digitalWrite(AIN1, LOW);
+    digitalWrite(AIN2, LOW);
+    analogWrite(PWMA, 0);     
+    
+    digitalWrite(BIN1, HIGH);
+    digitalWrite(BIN2, LOW);
+    analogWrite(PWMB, 255);     
+  }
+  
+  delay(100);
+}</pre>
+        <hr style="border:0; border-top:1px solid #eee; margin-top:30px;">
+        <a href="index3.html" class="back-btn">← 返回主页</a>
+    </main>
+</body>
+</html>
