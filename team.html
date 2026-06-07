@@ -11,6 +11,18 @@
         p { color: #343a40; line-height: 1.8; font-size: 1.1rem; }
         .back-btn { display: inline-block; margin-top: 20px; color: #326de6; text-decoration: none; font-weight: bold; }
         .back-btn:hover { color: #2248b5; }
+        
+        /* 🎨 图片美化样式 */
+        .img-container {
+            text-align: center; 
+            margin: 24px 0;
+        }
+        .team-logo {
+            width: 100%; 
+            max-width: 320px; /* 限制最大宽度，防止图片太大撑破排版 */
+            border-radius: 12px; /* 优雅的圆角 */
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); /* 淡淡的高级阴影 */
+        }
     </style>
 </head>
 <body>
@@ -19,7 +31,11 @@
     </header>
     <main>
         <p>我们是核芯震魂团队，我们对制作现实数字展开发展，团队成员有：郭同学，邱同学，仪同学</p>
-        <img Screenshot= 2026-06-06 230520.png alt="核芯震魂标志" width="300">
+        
+        <div class="img-container">
+            <img src="logo.png" alt="核芯震魂标志" class="team-logo">
+        </div>
+       
         <hr style="border:0; border-top:1px solid #eee; margin-top:30px;">
         <a href="index.html" class="back-btn">← 返回主页</a>
     </main>
