@@ -1,636 +1,612 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <title>星球探测 - 核芯震魂</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-            background: #0a0a0f;
-            color: #c9d1d9;
-        }
-        header {
-            background: #326de6;
-            color: #fff;
-            padding: 16px 0;
-            text-align: center;
-        }
-        header h1 { font-size: 1.5rem; }
-        header p  { font-size: 0.85rem; opacity: 0.85; margin-top: 4px; }
-
-        #wrap {
-            max-width: 740px;
-            margin: 20px auto;
-            padding: 0 14px 30px;
-        }
-
-        /* ── View canvas ── */
-        #view-box {
-            position: relative;
-            width: 100%;
-            border-radius: 10px;
-            overflow: hidden;
-            border: 2px solid #326de6;
-            background: #000;
-            line-height: 0;
-        }
-        #view {
-            display: block;
-            width: 100%;
-            image-rendering: pixelated;
-        }
-
-        /* ── HUD overlay ── */
-        #hud {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            pointer-events: none;
-            padding: 10px 14px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .hud-top { display: flex; justify-content: space-between; align-items: flex-start; }
-        .hud-chip {
-            background: rgba(0,0,0,0.55);
-            border: 1px solid rgba(50,109,230,0.6);
-            border-radius: 6px;
-            padding: 5px 10px;
-            font-family: monospace;
-            font-size: 0.72rem;
-            color: #89c4ff;
-            line-height: 1.6;
-        }
-        .hud-chip b { color: #fff; }
-        .hud-crosshair {
-            position: absolute;
-            top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            width: 20px; height: 20px;
-            border: 1.5px solid rgba(255,255,255,0.5);
-            border-radius: 50%;
-        }
-        .hud-crosshair::before, .hud-crosshair::after {
-            content: '';
-            position: absolute;
-            background: rgba(255,255,255,0.5);
-        }
-        .hud-crosshair::before { width: 6px; height: 1px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
-        .hud-crosshair::after  { width: 1px; height: 6px; top: 50%; left: 50%; transform: translate(-50%,-50%); }
-
-        /* ── Terminal ── */
-        #terminal-box {
-            margin-top: 10px;
-            background: #050a05;
-            border: 1px solid #1a3a1a;
-            border-radius: 10px;
-            overflow: hidden;
-            display: flex;
-            gap: 0;
-        }
-        #term-left {
-            flex: 1;
-            padding: 12px 16px;
-            font-family: 'Cascadia Code', Consolas, monospace;
-            font-size: 0.78rem;
-            color: #39d353;
-            line-height: 1.55;
-            border-right: 1px solid #1a3a1a;
-            min-height: 160px;
-        }
-        #term-left .dim { color: #1f6a1f; }
-        #term-left .hi  { color: #7ee787; font-weight: bold; }
-        #term-left .warn{ color: #e3b341; }
-        #term-left .red { color: #f85149; }
-        #term-canvas-wrap {
-            width: 180px;
-            flex-shrink: 0;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            align-items: center;
-        }
-        #term-canvas-wrap span {
-            font-family: monospace;
-            font-size: 0.7rem;
-            color: #39d353;
-        }
-        #term-scan {
-            display: block;
-            width: 160px;
-            height: 120px;
-            image-rendering: pixelated;
-            border: 1px solid #1a3a1a;
-            border-radius: 4px;
-        }
-
-        /* ── Controls ── */
-        #controls-row {
-            margin-top: 12px;
-            display: flex;
-            gap: 14px;
-            align-items: flex-start;
-            flex-wrap: wrap;
-        }
-        .ctrl-pad {
-            background: #0d1117;
-            border-radius: 10px;
-            padding: 12px;
-            border: 1px solid #21262d;
-        }
-        .ctrl-pad h4 { font-size: 0.75rem; color: #666; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
-        .pad-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 42px);
-            grid-template-rows: repeat(3, 42px);
-            gap: 5px;
-        }
-        .pad-btn {
-            background: #161b22;
-            border: 1.5px solid #30363d;
-            border-radius: 7px;
-            color: #89aaff;
-            font-size: 1rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            user-select: none;
-            transition: background 0.1s;
-        }
-        .pad-btn:active, .pad-btn.pressed {
-            background: #326de6;
-            border-color: #326de6;
-            color: #fff;
-        }
-        .pad-btn.empty { visibility: hidden; }
-        .pad-btn.wide {
-            grid-column: span 3;
-            font-size: 0.8rem;
-            letter-spacing: 0.05em;
-        }
-
-        .info-chips {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .info-chip {
-            background: #0d1117;
-            border: 1px solid #21262d;
-            border-radius: 8px;
-            padding: 9px 14px;
-            font-size: 0.8rem;
-            color: #8b949e;
-            line-height: 1.5;
-        }
-        .info-chip b { color: #89c4ff; }
-
-        .action-row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-        .abtn {
-            padding: 9px 18px;
-            border-radius: 6px;
-            border: 2px solid #326de6;
-            background: #326de6;
-            color: #fff;
-            font-size: 0.88rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-        .abtn:hover { background: #2248b5; border-color: #2248b5; }
-        .abtn.ghost { background: transparent; color: #326de6; }
-        .abtn.ghost:hover { background: #326de6; color: #fff; }
-
-        hr { border: 0; border-top: 1px solid #21262d; margin-top: 20px; }
-        .back-btn { display: inline-block; margin-top: 14px; color: #326de6; text-decoration: none; font-weight: bold; }
-        .back-btn:hover { color: #89c4ff; }
-    </style>
+<meta charset="UTF-8">
+<title>星球探测 - 核芯震魂</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-select=no">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Helvetica Neue',Helvetica,Arial,'Microsoft YaHei',sans-serif;background:#07080f;color:#c9d1d9;user-select:none;-webkit-user-select:none;}
+header{background:#326de6;color:#fff;padding:14px 0;text-align:center}
+header h1{font-size:1.45rem}
+header p{font-size:.82rem;opacity:.82;margin-top:3px}
+#wrap{max-width:760px;margin:16px auto;padding:0 12px 32px}
+#view-box{position:relative;width:100%;border-radius:10px;overflow:hidden;border:2px solid #326de6;background:#000;line-height:0;cursor:move;}
+#view{display:block;width:100%;height:auto;}
+#hud{position:absolute;inset:0;pointer-events:none;padding:12px 16px;display:flex;flex-direction:column;justify-content:space-between}
+.hud-row{display:flex;justify-content:space-between;align-items:flex-start}
+.hc{background:rgba(7,8,15,.82);border:1px solid rgba(50,109,230,.4);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border-radius:6px;padding:6px 10px;font-family:monospace;font-size:.75rem;color:#89c4ff;line-height:1.7}
+.hc b{color:#fff}
+#cross{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:22px;height:22px;border:1.5px solid rgba(56,189,248,.6);border-radius:50%}
+#cross::before,#cross::after{content:'';position:absolute;background:rgba(56,189,248,.6)}
+#cross::before{width:8px;height:1.5px;top:50%;left:50%;transform:translate(-50%,-50%)}
+#cross::after{width:1.5px;height:8px;top:50%;left:50%;transform:translate(-50%,-50%)}
+#tmap-section{margin-top:10px;background:#000;border:1px solid #1a3a1a;border-radius:10px;overflow:hidden}
+#tmap-header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid #0d200d;background:#020802}
+#tmap-header span{font-family:monospace;font-size:.72rem;color:#39d353}
+.tbtn{padding:4px 12px;border-radius:4px;border:1px solid #1a4a1a;background:#061006;color:#39d353;font-family:monospace;font-size:.7rem;cursor:pointer;transition:all 0.2s;}
+.tbtn:hover{background:#0d2a0d;color:#fff;border-color:#39d353}
+#tmap-wrap{position:relative;overflow:hidden;cursor:grab;user-select:none}
+#tmap-wrap.dragging{cursor:grabbing}
+#tmap{display:block;width:100%}
+#tmap-hint{position:absolute;bottom:8px;right:10px;font-family:monospace;font-size:.65rem;color:#226e22;pointer-events:none}
+#log-strip{margin-top:8px;background:#020802;border:1px solid #0d200d;border-radius:8px;padding:10px 14px;font-family:Consolas,monospace;font-size:.72rem;color:#39d353;line-height:1.65;max-height:110px;overflow-y:auto}
+#log-strip .d{color:#1a4a1a}
+#log-strip .h{color:#7ee787;font-weight:bold}
+#log-strip .w{color:#e3b341}
+#ctrl-row{margin-top:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.cpad{background:#0d1117;border-radius:9px;padding:10px;border:1px solid #21262d}
+.cpad h4{font-size:.7rem;color:#777;margin-bottom:7px;text-transform:uppercase;letter-spacing:.05em}
+.pgrid{display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(2,40px);gap:5px}
+.pbtn{background:#161b22;border:1.5px solid #30363d;border-radius:7px;color:#89aaff;font-size:.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;transition:background .1s}
+.pbtn:active,.pbtn.pressed{background:#326de6;border-color:#326de6;color:#fff}
+.pbtn.e{visibility:hidden}
+.vgrid{display:grid;grid-template-columns:90px;grid-template-rows:repeat(3,40px);gap:5px}
+.pbtn.wide{font-size:.72rem;letter-spacing:.04em}
+.ichips{flex:1;display:flex;flex-direction:column;gap:7px}
+.ic{background:#0d1117;border:1px solid #21262d;border-radius:7px;padding:8px 12px;font-size:.77rem;color:#8b949e;line-height:1.5}
+.ic b{color:#89c4ff}
+.arow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.ab{padding:8px 16px;border-radius:6px;border:2px solid #326de6;background:#326de6;color:#fff;font-size:.86rem;font-weight:bold;cursor:pointer;transition:background .15s}
+.ab:hover{background:#2248b5;border-color:#2248b5}
+.ab.g{background:transparent;color:#326de6}
+.ab.g:hover{background:#326de6;color:#fff}
+hr{border:0;border-top:1px solid #21262d;margin-top:18px}
+.bk{display:inline-block;margin-top:12px;color:#326de6;text-decoration:none;font-weight:bold}
+.bk:hover{color:#89c4ff}
+</style>
 </head>
 <body>
 <header>
-    <h1>🛸 星球探测模拟器</h1>
-    <p>未知星球 · VL53L0X 高度传感 · 实时地形扫描 · 垂直起降</p>
+  <h1>🛸 星球探测模拟器</h1>
+  <p>未知星球 · VL53L0X 高度传感 · HD体素渲染 · 自由3D全景终端</p>
 </header>
-
 <div id="wrap">
-    <div id="view-box">
-        <canvas id="view" width="640" height="360"></canvas>
-        <div id="hud">
-            <div class="hud-top">
-                <div class="hud-chip" id="hud-planet">
-                    <b>行星代号</b> ——<br>
-                    <b>坐标</b> X:— Y:—
-                </div>
-                <div class="hud-chip" id="hud-alt">
-                    <b>高度</b> — m<br>
-                    <b>地距</b> — m
-                </div>
-            </div>
-            <div style="text-align:center;">
-                <div class="hud-crosshair"></div>
-            </div>
-            <div class="hud-top">
-                <div class="hud-chip" id="hud-status">待机</div>
-                <div class="hud-chip" id="hud-speed">速度 0.0 m/s</div>
-            </div>
-        </div>
-    </div>
 
-    <div id="terminal-box">
-        <div id="term-left">
-            <span class="dim">核芯震魂 探测终端 v3.0</span><br>
-            <span class="dim">══════════════════════════</span><br>
-            <span id="tlog">正在初始化传感器...</span>
-        </div>
-        <div id="term-canvas-wrap">
-            <span>地面扫描 / GROUND SCAN</span>
-            <canvas id="term-scan" width="80" height="60"></canvas>
-            <span id="scan-alt" style="color:#39d353;">ALT: — m</span>
-        </div>
+  <div id="view-box">
+    <canvas id="view" width="1280" height="720"></canvas>
+    <div id="hud">
+      <div class="hud-row">
+        <div class="hc" id="hc-planet"><b>行星</b> ——<br><b>坐标</b> X:— Y:—</div>
+        <div class="hc" id="hc-alt"><b>高度</b> — m<br><b>地距</b> — m</div>
+      </div>
+      <div style="text-align:center;position:relative"><div id="cross"></div></div>
+      <div class="hud-row">
+        <div class="hc" id="hc-mode">待机</div>
+        <div class="hc" id="hc-spd">速度 0.0 m/s</div>
+      </div>
     </div>
+  </div>
 
-    <div id="controls-row">
-        <div class="ctrl-pad">
-            <h4>移动 · Move</h4>
-            <div class="pad-grid">
-                <div class="pad-btn empty"></div>
-                <div class="pad-btn" data-key="w">▲</div>
-                <div class="pad-btn empty"></div>
-                <div class="pad-btn" data-key="a">◀</div>
-                <div class="pad-btn" data-key="s">▼</div>
-                <div class="pad-btn" data-key="d">▶</div>
-            </div>
-        </div>
-        <div class="ctrl-pad">
-            <h4>升降 · Altitude</h4>
-            <div class="pad-grid" style="grid-template-columns:repeat(1,90px); grid-template-rows:repeat(3,42px);">
-                <div class="pad-btn wide" data-key=" ">▲ 上升 ASCEND</div>
-                <div class="pad-btn wide" data-key="c">— 悬停 HOVER</div>
-                <div class="pad-btn wide" data-key="z">▼ 下降 DESCEND</div>
-            </div>
-        </div>
-        <div class="info-chips">
-            <div class="info-chip">
-                <b>W/A/S/D</b> — 前后左右移动<br>
-                <b>空格</b> — 上升 &nbsp; <b>Z</b> — 下降<br>
-                <b>C</b> — 悬停锁定
-            </div>
-            <div class="info-chip">
-                高度 <b>&lt; 5m</b>：着陆模式<br>
-                高度 <b>5–50m</b>：低空扫描<br>
-                高度 <b>&gt; 50m</b>：巡航模式
-            </div>
-        </div>
+  <div id="tmap-section">
+    <div id="tmap-header">
+      <span id="tmap-title">📡 地形终端 · TERRAIN TERMINAL — 0 点</span>
+      <div style="display:flex;gap:6px">
+        <button class="tbtn" id="btn-follow">跟随 ON</button>
+        <button class="tbtn" id="btn-clearsv">清空</button>
+      </div>
     </div>
-
-    <div class="action-row">
-        <button class="abtn" id="btn-newplanet">🌍 新星球</button>
-        <button class="abtn ghost" id="btn-land">自动着陆</button>
-        <button class="abtn ghost" id="btn-takeoff">垂直起飞</button>
+    <div id="tmap-wrap">
+      <canvas id="tmap" width="700" height="350"></canvas>
+      <div id="tmap-hint">左键平移 · 右键/双指旋转 · 滚轮缩放</div>
     </div>
+  </div>
 
-    <hr>
-    <a href="index.html" class="back-btn">← 返回主页</a>
+  <div id="log-strip"><span class="d">核芯震魂 探测终端 v4.0 HD — 等待启动...</span></div>
+
+  <div id="ctrl-row">
+    <div class="cpad">
+      <h4>推进</h4>
+      <div class="pgrid">
+        <div class="pbtn e"></div>
+        <div class="pbtn" data-key="w">▲ 前进</div>
+        <div class="pbtn e"></div>
+        <div class="pbtn e"></div>
+        <div class="pbtn" data-key="s">▼ 后退</div>
+        <div class="pbtn e"></div>
+      </div>
+    </div>
+    <div class="cpad">
+      <h4>升降</h4>
+      <div class="vgrid">
+        <div class="pbtn wide" data-key=" ">▲ 上升</div>
+        <div class="pbtn wide" id="btn-hover">— 悬停</div>
+        <div class="pbtn wide" data-key="z">▼ 下降</div>
+      </div>
+    </div>
+    <div class="ichips">
+      <div class="ic"><b>按住主画面左右滑动</b> 旋转视野 · <b>W/S</b> 前后平移移动</div>
+      <div class="ic"><b>3D终端控制</b>：鼠标左键拖动平移，<b>鼠标右键拖动（或触屏双指滑动）可360°旋转全景立体视角</b>。</div>
+    </div>
+  </div>
+
+  <div class="arow">
+    <button class="ab" id="btn-np">🌍 新星球</button>
+    <button class="ab g" id="btn-land">自动着陆</button>
+    <button class="ab g" id="btn-to">垂直起飞</button>
+  </div>
+
+  <hr>
+  <a href="index.html" class="bk">← 返回主页</a>
 </div>
 
 <script>
-(() => {
+(function () {
 'use strict';
 
-const VW = 640, VH = 360;
-const MAP = 512;
-const MAP_MASK = MAP - 1;
-const SCALE = 120;
-const FAR   = 400;
+// 🌟 1. 画质大幅度提升：画布物理大小升级至 1280x720 超采样
+var VW = 1280, VH = 720;
+var MAP = 256, MASK = MAP - 1;
+var VSCALE = 320, FAR = 420, HSCALE = 0.45;
 
-const view  = document.getElementById('view');
-const vctx  = view.getContext('2d');
-const imgd  = vctx.createImageData(VW, VH);
-const buf32 = new Uint32Array(imgd.data.buffer);
+var viewCanvas = document.getElementById('view');
+var vctx = viewCanvas.getContext('2d');
+var imgd = vctx.createImageData(VW, VH);
+var b32  = new Uint32Array(imgd.data.buffer);
+var yBuf = new Float32Array(VW);
 
-const scan  = document.getElementById('term-scan');
-const sctx  = scan.getContext('2d');
-const SW = 80, SH = 60;
-const simgd = sctx.createImageData(SW, SH);
-const sbuf  = new Uint32Array(simgd.data.buffer);
+var tmapCanvas = document.getElementById('tmap');
+var tctx = tmapCanvas.getContext('2d');
+var TW = tmapCanvas.width, TH = tmapCanvas.height;
 
-const hmap = new Uint8Array(MAP * MAP);
-const cmap = new Uint32Array(MAP * MAP);
-
-let cam = { x:128, y:128, z:80, angle:0.0, pitch: VH*0.45 };
-let vz = 0;
-let hoverLock = false;
-let planet = null;
-const keys = {};
-
-function hash2(x, y, s) {
-    const n = Math.sin(x * 127.1 + y * 311.7 + s * 74.3) * 43758.5453123;
-    return n - Math.floor(n);
+function resizeTmap() {
+  var w = tmapCanvas.parentElement.clientWidth || 700;
+  if (w < 200) w = 700;
+  tmapCanvas.width = w;
+  TW = w;
 }
+resizeTmap();
+window.addEventListener('resize', resizeTmap);
+
+var hmap = new Uint8Array(MAP * MAP);
+var cmap = new Uint32Array(MAP * MAP);
+
+var cam = { x: 128, y: 128, z: 120, angle: 0, pitch: VH * 0.48 };
+var vz = 0, hoverLock = false, planet = null, keys = {};
+
+// 🌟 3. 自由视角全动态 3D 相机矩阵状态参数
+var tPan = { x: 0, y: 0, z: 0 }; 
+var tOrbit = { theta: 0.7, phi: 1.1, radius: 2.2 }; 
+var tFollow = true, termDirty = true;
+
 function lerp(a, b, t) { return a + (b - a) * t; }
-function smoothstep(t) { return t * t * (3 - 2 * t); }
-
+function smooth(t) { return t * t * (3 - 2 * t); }
+function hash2(xi, yi, seed) {
+  var n = Math.sin(xi * 127.1 + yi * 311.7 + seed * 74.3) * 43758.5453;
+  return n - Math.floor(n);
+}
 function valueNoise(x, y, seed) {
-    const ix = Math.floor(x), iy = Math.floor(y);
-    const fx = smoothstep(x - ix), fy = smoothstep(y - iy);
-    return lerp(
-        lerp(hash2(ix,   iy,   seed), hash2(ix+1, iy,   seed), fx),
-        lerp(hash2(ix,   iy+1, seed), hash2(ix+1, iy+1, seed), fx),
-        fy
-    );
+  var ix = Math.floor(x), iy = Math.floor(y);
+  var fx = smooth(x - ix), fy = smooth(y - iy);
+  return lerp(lerp(hash2(ix,iy,seed),hash2(ix+1,iy,seed),fx),
+              lerp(hash2(ix,iy+1,seed),hash2(ix+1,iy+1,seed),fx), fy);
 }
-
 function fbm(x, y, seed, oct) {
-    let v = 0, a = 0.5, f = 1;
-    for (let i = 0; i < oct; i++) {
-        v += valueNoise(x * f, y * f, seed + i * 100) * a;
-        a *= 0.52; f *= 2.1;
-    }
-    return v;
+  var v = 0, amp = 0.5, freq = 1;
+  for (var i = 0; i < oct; i++) {
+    v += valueNoise(x*freq, y*freq, seed+i*100) * amp;
+    amp *= 0.52; freq *= 2.1;
+  }
+  return v;
 }
 
-const PLANET_DEFS = [
-    {
-        id: 'VOLCANIC', name: '火山星 IGNIS',
-        skyT: 0xff1a0000, skyB: 0xff3d1500, fogC: [80, 20, 0],
-        colorFn(h, n) {
-            if (h < 55) return h < 40
-                ? rgba(200+n*20, 80+n*30, 0, 255)
-                : rgba(120+n*15, 40+n*10, 0, 255);
-            const r = 90 + (h-55)*0.8 + n*20;
-            return rgba(r, r*0.3, n*10, 255);
-        }
-    },
-    {
-        id: 'CRYSTAL', name: '晶体星 PRISMA',
-        skyT: 0xff050020, skyB: 0xff150035, fogC: [10, 0, 50],
-        colorFn(h, n) {
-            const t = h / 220;
-            return rgba(lerp(20,100,t)+n*30, lerp(10,60,t)+n*10, lerp(100,220,t)+n*20, 255);
-        }
-    },
-    {
-        id: 'ICE', name: '冰原星 GLACIUS',
-        skyT: 0xff050a20, skyB: 0xff0a1840, fogC: [20, 40, 80],
-        colorFn(h, n) {
-            const v = lerp(140, 240, h/220) + n*15;
-            return rgba(v*0.85, v*0.92, v, 255);
-        }
-    },
-    {
-        id: 'DESERT', name: '沙漠星 SOLARA',
-        skyT: 0xff100800, skyB: 0xff3d2000, fogC: [120, 70, 20],
-        colorFn(h, n) {
-            const t = h / 220;
-            return rgba(lerp(180,220,t)+n*15, lerp(100,160,t)+n*10, lerp(20,60,t)+n*5, 255);
-        }
-    },
-    {
-        id: 'JUNGLE', name: '丛林星 VIRIDIS',
-        skyT: 0xff000a05, skyB: 0xff001a08, fogC: [0, 30, 10],
-        colorFn(h, n) {
-            const t = h / 220;
-            return rgba(lerp(10,60,t)+n*10, lerp(60,160,t)+n*20, lerp(10,30,t)+n*5, 255);
-        }
-    },
+function packRGBA(r, g, b) {
+  r = r<0?0:r>255?255:r|0;
+  g = g<0?0:g>255?255:g|0;
+  b = b<0?0:b>255?255:b|0;
+  return (0xFF000000 | (b<<16) | (g<<8) | r) >>> 0;
+}
+
+var PLANET_DEFS = [
+  { id:'VOLCANIC', name:'火山星 IGNIS', skyT:[15,0,0], skyB:[75,22,0], fog:[100,30,5], stars:false, cf:function(h,n){ if(h<50)return packRGBA(210+n*12,70+n*20,n*4); var r=90+(h-50)*0.7+n*15; return packRGBA(r,r*0.28,n*5); }},
+  { id:'CRYSTAL', name:'晶体星 PRISMA', skyT:[5,0,22], skyB:[18,0,50], fog:[12,0,65], stars:true, cf:function(h,n){ var t=h/220; return packRGBA(lerp(20,100,t)+n*25,lerp(8,60,t)+n*8,lerp(100,235,t)+n*18); }},
+  { id:'ICE', name:'冰原星 GLACIUS', skyT:[5,10,26], skyB:[12,26,65], fog:[30,55,110], stars:true, cf:function(h,n){ var v=lerp(140,250,h/220)+n*10; return packRGBA(v*0.82,v*0.91,v); }},
+  { id:'DESERT', name:'沙漠星 SOLARA', skyT:[22,11,0], skyB:[65,32,5], fog:[140,82,26], stars:false, cf:function(h,n){ var t=h/220; return packRGBA(lerp(185,235,t)+n*12,lerp(105,165,t)+n*8,lerp(20,60,t)+n*5); }},
+  { id:'JUNGLE', name:'丛林星 VIRIDIS', skyT:[0,10,4], skyB:[0,26,10], fog:[0,40,15], stars:false, cf:function(h,n){ var t=h/220; return packRGBA(lerp(10,60,t)+n*8,lerp(60,165,t)+n*18,lerp(10,32,t)+n*5); }}
 ];
 
-function rgba(r, g, b, a) {
-    r = Math.max(0, Math.min(255, r|0));
-    g = Math.max(0, Math.min(255, g|0));
-    b = Math.max(0, Math.min(255, b|0));
-    return (a << 24) | (b << 16) | (g << 8) | r;
+var STARS = [];
+for (var si = 0; si < 450; si++)
+  STARS.push({x:Math.random(), y:Math.random(), br:0.3+Math.random()*0.7});
+
+function genPlanet(typeIdx) {
+  if (typeIdx === undefined || typeIdx === null)
+    typeIdx = Math.floor(Math.random() * PLANET_DEFS.length);
+  planet = PLANET_DEFS[typeIdx];
+  var seed = Math.floor(Math.random() * 9999), inv = 1/MAP;
+  for (var py=0; py<MAP; py++) for (var px=0; px<MAP; px++) {
+    var h0 = fbm(px*inv*4, py*inv*4, seed, 6);
+    var h = (h0*1.85-0.1)*200+18;
+    h = h<0?0:h>255?255:h|0;
+    var n = valueNoise(px*inv*16, py*inv*16, seed+999)*28|0;
+    hmap[py*MAP+px] = h;
+    cmap[py*MAP+px] = planet.cf(h, n);
+  }
+  cam.x=MAP/2; cam.y=MAP/2; cam.z=120; cam.angle=0;
+  vz=0; hoverLock=false;
+  survey.length=0; lastSurveyMs=0;
+  tPan={x:0, y:0, z:0}; tOrbit={theta:0.6, phi:1.0, radius:2.5};
+  logLines=[];
+  tLog('[BOOT] '+planet.name+'  seed:'+seed.toString(16).toUpperCase());
+  tLog('[SYS]  VL53L0X 高清就绪  3D地形全景构建中...');
 }
 
-function generatePlanet(typeIdx) {
-    typeIdx = typeIdx ?? (Math.random() * PLANET_DEFS.length | 0);
-    planet = PLANET_DEFS[typeIdx];
-    const seed = Math.random() * 9999 | 0;
-    const inv = 1 / MAP;
-    for (let y = 0; y < MAP; y++) {
-        for (let x = 0; x < MAP; x++) {
-            const h0 = fbm(x * inv * 4, y * inv * 4, seed, 7);
-            const h  = Math.max(0, Math.min(255, (h0 * 1.8 - 0.1) * 200 + 15 | 0));
-            const n  = valueNoise(x * inv * 16, y * inv * 16, seed + 999) * 30 | 0;
-            hmap[y * MAP + x] = h;
-            cmap[y * MAP + x] = planet.colorFn(h, n);
-        }
+function terrainAt(x, y) { return hmap[((y|0)&MASK)*MAP+((x|0)&MASK)]; }
+function gDist() { return Math.max(0, (cam.z - terrainAt(cam.x,cam.y)) * HSCALE); }
+
+var survey=[], lastSurveyMs=0, SURVEY_MS=50, MAX_PTS=6000;
+
+function collectPoint() {
+  var now = Date.now();
+  if (now-lastSurveyMs < SURVEY_MS) return;
+  lastSurveyMs = now;
+  var dist=gDist(), roverZ=cam.z*HSCALE, groundZ=roverZ-dist;
+  survey.push({wx:cam.x, wy:cam.y, gz:groundZ, rz:roverZ});
+  if (survey.length>MAX_PTS) survey.shift();
+  termDirty = true;
+}
+
+// 🌟 渲染：高精度体素步进，dz更加精密
+function renderVoxel() {
+  var sinA=Math.sin(cam.angle), cosA=Math.cos(cam.angle);
+  var skyT=planet.skyT, skyB=planet.skyB, fog=planet.fog;
+  for (var sy=0; sy<VH; sy++) {
+    var t=sy/VH;
+    var sc=(0xFF000000|(lerp(skyT[2],skyB[2],t)|0)<<16|(lerp(skyT[1],skyB[1],t)|0)<<8|(lerp(skyT[0],skyB[0],t)|0))>>>0;
+    var row=sy*VW; for (var sx=0; sx<VW; sx++) b32[row+sx]=sc;
+  }
+  if (planet.stars) {
+    var horizon=cam.pitch|0;
+    for (var si2=0; si2<STARS.length; si2++) {
+      var st=STARS[si2], stx=(st.x*VW)|0, sty=(st.y*horizon*0.94)|0;
+      if (sty<0||sty>=VH) continue;
+      var sv=(st.br*210)|0;
+      b32[sty*VW+stx]=(0xFF000000|(sv<<16)|(sv<<8)|sv)>>>0;
     }
-    cam.x = MAP / 2; cam.y = MAP / 2;
-    cam.z = 90; cam.angle = 0;
-    vz = 0; hoverLock = false;
-    logLines = [];
-    termLog(`[BOOT] 行星 ${planet.name}`);
-    termLog(`[SEED] ${seed.toString(16).toUpperCase().padStart(4,'0')}`);
-    termLog(`[SENSOR] VL53L0X 初始化完成`);
-    termLog(`[STATUS] 巡航高度 ${cam.z.toFixed(1)}m`);
-}
-
-function renderVoxelSpace() {
-    const sinA = Math.sin(cam.angle);
-    const cosA = Math.cos(cam.angle);
-    const { skyT, skyB, fogC } = planet;
-
-    for (let y = 0; y < VH; y++) {
-        const t = y / VH;
-        const r = lerp(skyT & 0xff,        skyB & 0xff,        t) | 0;
-        const g = lerp((skyT>>8) & 0xff,   (skyB>>8) & 0xff,   t) | 0;
-        const b = lerp((skyT>>16) & 0xff,  (skyB>>16) & 0xff,  t) | 0;
-        const c = (0xff << 24) | (b << 16) | (g << 8) | r;
-        const row = y * VW;
-        for (let x = 0; x < VW; x++) buf32[row + x] = c;
+  }
+  yBuf.fill(VH);
+  var dz=0.8; // 提升步进速度增加前视解析度
+  for (var z=1; z<FAR; z+=dz) {
+    var plx=-cosA*z-sinA*z, ply=sinA*z-cosA*z;
+    var prx=cosA*z-sinA*z,  pry=-sinA*z-cosA*z;
+    var dx=(prx-plx)/VW, dy=(pry-ply)/VW;
+    var rx=cam.x+plx, ry=cam.y+ply;
+    var invz=VSCALE/z, fogT=(z/FAR)*(z/FAR); if(fogT>1)fogT=1;
+    for (var col=0; col<VW; col++) {
+      var idx=((ry|0)&MASK)*MAP+((rx|0)&MASK);
+      var projY=((cam.z-hmap[idx])*invz+cam.pitch)|0;
+      if (projY<yBuf[col]) {
+        var tc=cmap[idx];
+        var fc=(0xFF000000|(lerp((tc>>>16)&0xFF,fog[2],fogT)|0)<<16|(lerp((tc>>>8) &0xFF,fog[1],fogT)|0)<<8|(lerp(tc&0xFF,fog[0],fogT)|0))>>>0;
+        var top=projY<0?0:projY, bot=yBuf[col]>VH?VH:yBuf[col]|0;
+        for (var row2=top; row2<bot; row2++) b32[row2*VW+col]=fc;
+        yBuf[col]=projY;
+      }
+      rx+=dx; ry+=dy;
     }
-
-    const yBuf = new Float32Array(VW).fill(VH);
-    let dz = 1.0;
-
-    for (let z = 1; z < FAR; z += dz) {
-        const plx = (-cosA * z - sinA * z);
-        const ply = ( sinA * z - cosA * z);
-        const prx = ( cosA * z - sinA * z);
-        const pry = (-sinA * z - cosA * z);
-        const dx = (prx - plx) / VW;
-        const dy = (pry - ply) / VW;
-        let rx = cam.x + plx;
-        let ry = cam.y + ply;
-        const invz = SCALE / z;
-        const fogT = Math.min(1, z / FAR);
-
-        for (let i = 0; i < VW; i++) {
-            const idx = ((ry|0) & MAP_MASK) * MAP + ((rx|0) & MAP_MASK);
-            const screenY = ((cam.z - hmap[idx]) * invz + cam.pitch) | 0;
-
-            if (screenY < yBuf[i]) {
-                const tc = cmap[idx];
-                const fr = lerp(tc & 0xff,        fogC[0], fogT) | 0;
-                const fg = lerp((tc>>8) & 0xff,   fogC[1], fogT) | 0;
-                const fb = lerp((tc>>16) & 0xff,  fogC[2], fogT) | 0;
-                const fc = (0xff << 24) | (fb << 16) | (fg << 8) | fr;
-                const top = Math.max(0, screenY | 0);
-                const bot = Math.min(VH, yBuf[i] | 0);
-                for (let y = top; y < bot; y++) buf32[y * VW + i] = fc;
-                yBuf[i] = screenY;
-            }
-            rx += dx; ry += dy;
-        }
-        dz += 0.005;
-    }
-    vctx.putImageData(imgd, 0, 0);
+    dz+=0.003;
+  }
+  vctx.putImageData(imgd,0,0);
 }
 
-function renderScan() {
-    const cx = cam.x | 0, cy = cam.y | 0;
-    const viewR = Math.max(4, groundDist() * 0.4);
-    for (let sy = 0; sy < SH; sy++) {
-        for (let sx = 0; sx < SW; sx++) {
-            const idx = (((cy + (sy/SH-0.5)*viewR*2)|0) & MAP_MASK) * MAP
-                      + (((cx + (sx/SW-0.5)*viewR*2)|0) & MAP_MASK);
-            const c = cmap[idx];
-            sbuf[sy*SW+sx] = (0xff<<24) | (((c>>16)&0xff)*0.8<<16) | (((c>>8)&0xff)*0.8<<8) | ((c&0xff)*0.8);
-        }
-    }
-    const cx2 = SW>>1, cy2 = SH>>1;
-    for (let i = -5; i <= 5; i++) {
-        if (cx2+i>=0&&cx2+i<SW) sbuf[cy2*SW+cx2+i] = 0xff39ff39;
-        if (cy2+i>=0&&cy2+i<SH) sbuf[(cy2+i)*SW+cx2] = 0xff39ff39;
-    }
-    sctx.putImageData(simgd, 0, 0);
-    document.getElementById('scan-alt').textContent = `ALT: ${groundDist().toFixed(1)} m`;
+// 🌟 3. 自由3D视角投射算法矩阵 (全方向旋转支持)
+function proj3D(wx, wy, wz) {
+  var dx = wx - tPan.x;
+  var dy = wy - tPan.y;
+  var dz = wz - tPan.z;
+
+  var cosT = Math.cos(tOrbit.theta), sinT = Math.sin(tOrbit.theta);
+  var cosP = Math.cos(tOrbit.phi),   sinP = Math.sin(tOrbit.phi);
+
+  // 核心旋转变换
+  var x1 = cosT * dx + sinT * dy;
+  var y1 = -sinT * dx + cosT * dy;
+  
+  var camX = cosP * x1 - sinP * dz;
+  var camZ = sinP * x1 + cosP * dz;
+  var camY = y1;
+
+  var f = 400 / (tOrbit.radius * 200 + camZ);
+  return {
+    sx: TW / 2 + camX * f * 30,
+    sy: TH / 2 - camY * f * 30
+  };
 }
 
-function terrainHeightAt(x, y) {
-    return hmap[((y|0)&MAP_MASK)*MAP + ((x|0)&MAP_MASK)];
-}
-function groundDist() {
-    return Math.max(0, cam.z - terrainHeightAt(cam.x, cam.y) * 0.4 / 0.4);
+var termFrame=0;
+function renderTerminal() {
+  termFrame++;
+  if (!termDirty && termFrame%2!==0) return;
+  termDirty=false;
+  tctx.fillStyle='#010502'; tctx.fillRect(0,0,TW,TH);
+  
+  if (survey.length<2) {
+    tctx.fillStyle='#1a4a1a'; tctx.font='13px monospace'; tctx.textAlign='center';
+    tctx.fillText('📡 TERRAIN TERMINAL — 等待传感器数据...',TW/2,TH/2);
+    tctx.textAlign='left'; return;
+  }
+  
+  if (tFollow) {
+    var lastPt = survey[survey.length-1];
+    tPan.x += (lastPt.wx - tPan.x) * 0.1;
+    tPan.y += (lastPt.wy - tPan.y) * 0.1;
+    tPan.z += (lastPt.gz - tPan.z) * 0.1;
+  }
+
+  var N=survey.length, minGz=Infinity, maxGz=-Infinity;
+  for (var ki=0; ki<N; ki++){if(survey[ki].gz<minGz)minGz=survey[ki].gz;if(survey[ki].gz>maxGz)maxGz=survey[ki].gz;}
+  var rangeGz=maxGz-minGz; if(rangeGz<1)rangeGz=1;
+  
+  // 绘制 3D 探测连线
+  tctx.lineWidth=2; tctx.lineJoin='round';
+  for (var i=1; i<N; i++) {
+    var pa=proj3D(survey[i-1].wx,survey[i-1].wy,survey[i-1].gz);
+    var pb=proj3D(survey[i].wx,survey[i].wy,survey[i].gz);
+    if(pa.sx<-100||pa.sx>TW+100||pa.sy<-100||pa.sy>TH+100) continue;
+    var t2=(survey[i].gz-minGz)/rangeGz;
+    tctx.strokeStyle='rgb('+(lerp(0,50,t2)|0)+','+(lerp(140,255,t2)|0)+','+(lerp(50,140,t2)|0)+')';
+    tctx.beginPath(); tctx.moveTo(pa.sx,pa.sy); tctx.lineTo(pb.sx,pb.sy); tctx.stroke();
+  }
+  
+  // 绘制3D轨迹星空高度指示虚线
+  tctx.strokeStyle='rgba(56,189,248,0.4)'; tctx.lineWidth=1; tctx.setLineDash([2,3]);
+  tctx.beginPath(); var altStarted=false;
+  for (var j=0; j<N; j++) {
+    var pp=proj3D(survey[j].wx,survey[j].wy,survey[j].rz);
+    if(pp.sx<-100||pp.sx>TW+100||pp.sy<-100||pp.sy>TH+100){altStarted=false;continue;}
+    if(!altStarted){tctx.moveTo(pp.sx,pp.sy);altStarted=true;} else tctx.lineTo(pp.sx,pp.sy);
+  }
+  tctx.stroke(); tctx.setLineDash([]);
+
+  var last=survey[N-1], lp=proj3D(last.wx,last.wy,last.gz);
+  tctx.fillStyle='#fff'; tctx.beginPath(); tctx.arc(lp.sx,lp.sy,5,0,Math.PI*2); tctx.fill();
+  
+  var pulse=(Date.now()%1000)/1000;
+  tctx.strokeStyle='rgba(57,211,83,'+(1-pulse)+')'; tctx.lineWidth=2;
+  tctx.beginPath(); tctx.arc(lp.sx,lp.sy,5+pulse*18,0,Math.PI*2); tctx.stroke();
+
+  tctx.fillStyle='#39d353'; tctx.font='11px monospace';
+  document.getElementById('tmap-title').textContent = '📡 地形终端 · 全景空间三维网络 — '+N+' 采样点';
 }
 
-let logLines = [];
-let lastLogMode = '';
-function termLog(msg) {
-    logLines.push(msg);
-    if (logLines.length > 10) logLines.shift();
-    document.getElementById('tlog').innerHTML = logLines.map((l, i) => {
-        if (l.startsWith('[WARN]')) return `<span class="warn">${l}</span>`;
-        if (l.startsWith('[LAND]')||l.startsWith('[TAKE]')) return `<span class="hi">${l}</span>`;
-        if (l.startsWith('[COLL]')) return `<span class="red">${l}</span>`;
-        if (i < logLines.length-1) return `<span class="dim">${l}</span>`;
-        return l;
-    }).join('<br>');
-}
-
-let tick = 0;
 function updateHUD() {
-    const dist = groundDist();
-    document.getElementById('hud-planet').innerHTML =
-        `<b>${planet.name}</b><br>X:${(cam.x|0).toString().padStart(3,'0')} Y:${(cam.y|0).toString().padStart(3,'0')}`;
-    document.getElementById('hud-alt').innerHTML =
-        `<b>高度</b> ${(cam.z*0.4).toFixed(1)} m<br><b>地距</b> ${dist.toFixed(1)} m`;
-    let mode = dist < 2 ? '🟢 已着陆' : dist < 5 ? '🟡 低空' : dist < 50 ? '🔵 低空扫描' : '🟣 巡航';
-    if (hoverLock) mode = '⚪ 悬停锁定';
-    document.getElementById('hud-status').textContent = mode;
-    document.getElementById('hud-speed').textContent = `速度 ${(Math.abs(vz)*2).toFixed(1)} m/s`;
-    tick++;
-    const newMode = dist < 2 ? 'LANDED' : dist < 50 ? 'LOW' : 'CRUISE';
-    if (newMode !== lastLogMode) {
-        lastLogMode = newMode;
-        if (newMode==='LANDED') termLog(`[LAND] 着陆完成 高度 ${dist.toFixed(2)}m`);
-        else if (newMode==='LOW') termLog(`[SCAN] 进入低空 地距 ${dist.toFixed(1)}m`);
-        else termLog(`[CRSE] 巡航模式 ALT ${(cam.z*0.4).toFixed(1)}m`);
-    }
-    if (tick % 120 === 0)
-        termLog(`[VL53L0X] ${dist.toFixed(3)} m | 地表高 ${(terrainHeightAt(cam.x,cam.y)*0.4).toFixed(1)} m`);
+  var dist=gDist(), alt=(cam.z*HSCALE).toFixed(1);
+  document.getElementById('hc-planet').innerHTML='<b>'+planet.name+'</b><br><b>坐标</b> X:'+String(cam.x|0).padStart(3,'0')+' Y:'+String(cam.y|0).padStart(3,'0');
+  document.getElementById('hc-alt').innerHTML='<b>高度</b> '+alt+' m<br><b>地距</b> '+dist.toFixed(1)+' m';
+  var mode=dist<1.5?'🟢 已着陆':dist<5?'🟡 低空':dist<50?'🔵 扫描':'🟣 巡航';
+  if(hoverLock)mode='⚪ 悬停';
+  document.getElementById('hc-mode').textContent=mode;
+  document.getElementById('hc-spd').textContent='速度 '+(Math.abs(vz)*2).toFixed(1)+' m/s';
+  
+  if (Date.now()%2000<16) tLog('[VL53L0X] 激光反馈地距:'+dist.toFixed(3)+'m  当前高度轴:'+alt+'m');
 }
 
-const TURN=0.032, MOVE=0.9, THRUST=0.25, DRAG=0.88;
+var logLines=[];
+function tLog(msg) {
+  logLines.push(msg); if(logLines.length>40)logLines.shift();
+  var el=document.getElementById('log-strip');
+  el.innerHTML=logLines.map(function(l,i){
+    if(l.indexOf('[LAND]')===0||l.indexOf('[TAKE]')===0)return'<span class="h">'+l+'</span>';
+    if(l.indexOf('[WARN]')===0)return'<span class="w">'+l+'</span>';
+    if(i<logLines.length-1)return'<span class="d">'+l+'</span>';
+    return l;
+  }).join('<br>');
+  el.scrollTop=el.scrollHeight;
+}
+
+var MOVE=0.9, THRUST=0.24, DRAG=0.87;
 function update() {
-    if (!planet) return;
-    const s = Math.sin(cam.angle), c = Math.cos(cam.angle);
-    if (keys['a']||keys['A']||keys['ArrowLeft'])  cam.angle -= TURN;
-    if (keys['d']||keys['D']||keys['ArrowRight']) cam.angle += TURN;
-    if (keys['w']||keys['W']||keys['ArrowUp'])   { cam.x += c*MOVE; cam.y += s*MOVE; }
-    if (keys['s']||keys['S']||keys['ArrowDown']) { cam.x -= c*MOVE; cam.y -= s*MOVE; }
-    cam.x = (cam.x + MAP) % MAP;
-    cam.y = (cam.y + MAP) % MAP;
-    if (!hoverLock) {
-        if (keys[' '])              vz += THRUST;
-        if (keys['z']||keys['Z'])   vz -= THRUST;
-        vz *= DRAG;
-        cam.z += vz;
-    } else {
-        vz = 0;
-        if (keys[' '])            { hoverLock=false; vz+=THRUST; }
-        if (keys['z']||keys['Z']) { hoverLock=false; vz-=THRUST; }
-    }
-    const minZ = terrainHeightAt(cam.x, cam.y) + 4;
-    if (cam.z < minZ) { cam.z = minZ; if (vz<0) vz=0; }
-    if (cam.z > 600)  { cam.z = 600; vz=0; }
-    cam.pitch = VH * 0.45;
+  if(!planet)return;
+  var s=Math.sin(cam.angle), c=Math.cos(cam.angle);
+  if(keys['w']||keys['W']||keys['ArrowUp'])   {cam.x+=c*MOVE;cam.y+=s*MOVE; termDirty=true;}
+  if(keys['s']||keys['S']||keys['ArrowDown']) {cam.x-=c*MOVE;cam.y-=s*MOVE; termDirty=true;}
+  cam.x=(cam.x+MAP)%MAP; cam.y=(cam.y+MAP)%MAP;
+  if(!hoverLock){
+    if(keys[' '])             vz+=THRUST;
+    if(keys['z']||keys['Z']) vz-=THRUST;
+    vz*=DRAG; cam.z+=vz;
+  } else {
+    vz=0;
+    if(keys[' '])             {hoverLock=false;vz+=THRUST;}
+    if(keys['z']||keys['Z']) {hoverLock=false;vz-=THRUST;}
+  }
+  var minZ=terrainAt(cam.x,cam.y)+4;
+  if(cam.z<minZ){cam.z=minZ;if(vz<0)vz=0;}
+  if(cam.z>620){cam.z=620;vz=0;}
 }
 
-let autoCmd = null;
-function autoLand()   { autoCmd='land';    hoverLock=false; termLog('[LAND] 启动自动着陆...'); }
-function autoTakeoff(){ autoCmd='takeoff'; hoverLock=false; termLog('[TAKE] 启动垂直起飞...'); }
-function runAutoCmd() {
-    if (!autoCmd) return;
-    const dist = groundDist();
-    if (autoCmd==='land') {
-        if (dist > 1.5) { vz -= 0.18; vz = Math.max(vz,-3); }
-        else { vz=0; hoverLock=true; autoCmd=null; termLog('[LAND] ✓ 着陆完成'); }
-    } else if (autoCmd==='takeoff') {
-        if (cam.z < terrainHeightAt(cam.x,cam.y)+80) { vz+=0.22; vz=Math.min(vz,4); }
-        else { hoverLock=true; autoCmd=null; termLog('[TAKE] ✓ 起飞完成，悬停'); }
-    }
+var autoCmd=null;
+function doAutoLand()   {autoCmd='land';hoverLock=false;tLog('[LAND] 自动着陆开启...');}
+function doAutoTakeoff(){autoCmd='to';  hoverLock=false;tLog('[TAKE] 垂直起飞中...');}
+function runAuto() {
+  if(!autoCmd)return;
+  var d=gDist();
+  if(autoCmd==='land'){
+    if(d>1.5){vz-=0.16;if(vz<-3)vz=-3;}
+    else{vz=0;hoverLock=true;autoCmd=null;tLog('[LAND] ✓ 已安全平稳着陆');}
+  } else {
+    var target=terrainAt(cam.x,cam.y)+80;
+    if(cam.z<target){vz+=0.20;if(vz>4)vz=4;}
+    else{hoverLock=true;autoCmd=null;tLog('[TAKE] ✓ 已上升到预定高度悬停');}
+  }
 }
 
-let frameCount = 0;
 function loop() {
-    update(); runAutoCmd();
-    renderVoxelSpace(); updateHUD();
-    if (frameCount % 3 === 0) renderScan();
-    frameCount++;
-    requestAnimationFrame(loop);
+  update(); runAuto(); collectPoint();
+  renderVoxel(); renderTerminal(); updateHUD();
+  requestAnimationFrame(loop);
 }
 
-document.addEventListener('keydown', e => {
-    keys[e.key] = true;
-    if ([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
-    const btn = document.querySelector(`.pad-btn[data-key="${e.key}"]`);
-    if (btn) btn.classList.add('pressed');
+// 🌟 2. 核心调整：AD转向去除，改为针对主画面的滑屏/拖拽操作
+var isViewDragging = false;
+var lastViewX = 0;
+var viewBox = document.getElementById('view-box');
+
+viewBox.addEventListener('mousedown', function(e) {
+  isViewDragging = true;
+  lastViewX = e.clientX;
 });
-document.addEventListener('keyup', e => {
-    keys[e.key] = false;
-    const btn = document.querySelector(`.pad-btn[data-key="${e.key}"]`);
-    if (btn) btn.classList.remove('pressed');
+window.addEventListener('mousemove', function(e) {
+  if (!isViewDragging) return;
+  var deltaX = e.clientX - lastViewX;
+  cam.angle += deltaX * 0.005; // 滑动调向敏感度
+  lastViewX = e.clientX;
 });
-document.querySelectorAll('.pad-btn[data-key]').forEach(btn => {
-    const k = btn.dataset.key;
-    const dn = () => { keys[k]=true;  btn.classList.add('pressed'); };
-    const up = () => { keys[k]=false; btn.classList.remove('pressed'); };
-    btn.addEventListener('mousedown',  dn);
-    btn.addEventListener('mouseup',    up);
-    btn.addEventListener('mouseleave', up);
-    btn.addEventListener('touchstart', e=>{e.preventDefault();dn();},{passive:false});
-    btn.addEventListener('touchend',   e=>{e.preventDefault();up();},{passive:false});
+window.addEventListener('mouseup', function() {
+  isViewDragging = false;
 });
 
-document.getElementById('btn-newplanet').addEventListener('click', ()=>generatePlanet());
-document.getElementById('btn-land').addEventListener('click', autoLand);
-document.getElementById('btn-takeoff').addEventListener('click', autoTakeoff);
-document.querySelector('[data-key="c"]').addEventListener('mousedown', ()=>{
-    hoverLock=!hoverLock; vz=0;
-    termLog(hoverLock?'[HOVR] 悬停锁定':'[HOVR] 悬停解除');
+// 触屏滑动支持
+viewBox.addEventListener('touchstart', function(e) {
+  if(e.touches.length === 1) {
+    isViewDragging = true;
+    lastViewX = e.touches[0].clientX;
+  }
+}, {passive: true});
+viewBox.addEventListener('touchmove', function(e) {
+  if(!isViewDragging || e.touches.length !== 1) return;
+  var deltaX = e.touches[0].clientX - lastViewX;
+  cam.angle += deltaX * 0.008;
+  lastViewX = e.touches[0].clientX;
+}, {passive: true});
+viewBox.addEventListener('touchend', function() {
+  isViewDragging = false;
 });
 
-generatePlanet();
+// === 键盘支持 ===
+document.addEventListener('keydown',function(e){
+  keys[e.key]=true;
+  if([' ','ArrowUp','ArrowDown'].indexOf(e.key)>=0) e.preventDefault();
+  var btn=document.querySelector('.pbtn[data-key="'+e.key+'"]');
+  if(btn)btn.classList.add('pressed');
+});
+document.addEventListener('keyup',function(e){
+  keys[e.key]=false;
+  var btn=document.querySelector('.pbtn[data-key="'+e.key+'"]');
+  if(btn)btn.classList.remove('pressed');
+});
+
+document.querySelectorAll('.pbtn[data-key]').forEach(function(btn){
+  var k=btn.dataset.key;
+  function dn(){keys[k]=true; btn.classList.add('pressed');}
+  function up(){keys[k]=false;btn.classList.remove('pressed');}
+  btn.addEventListener('mousedown',dn); btn.addEventListener('mouseup',up); btn.addEventListener('mouseleave',up);
+  btn.addEventListener('touchstart',function(e){e.preventDefault();dn();},{passive:false});
+  btn.addEventListener('touchend',  function(e){e.preventDefault();up();},{passive:false});
+});
+
+document.getElementById('btn-hover').addEventListener('click',function(){
+  hoverLock=!hoverLock;vz=0;tLog(hoverLock?'[HOVR] 高度锁定激活':'[HOVR] 高度锁定解除');
+});
+
+// 🌟 3. 终端高级全景3D空间交互逻辑（任意视角旋转 + 平移 + 缩放）
+var tw=document.getElementById('tmap-wrap');
+var tDragMode = 0; // 1:左键平移, 2:右键旋转
+var tDragX=0, tDragY=0;
+
+tw.addEventListener('contextmenu', function(e) { e.preventDefault(); }); // 禁用右键菜单
+
+tw.addEventListener('mousedown', function(e) {
+  tDragMode = (e.button === 2 || e.ctrlKey) ? 2 : 1;
+  tw.classList.add('dragging');
+  tDragX = e.clientX; tDragY = e.clientY;
+  tFollow = false; 
+  document.getElementById('btn-follow').textContent = '跟随 OFF';
+});
+
+window.addEventListener('mousemove', function(e) {
+  if (tDragMode === 0) return;
+  var dx = e.clientX - tDragX;
+  var dy = e.clientY - tDragY;
+  tDragX = e.clientX; tDragY = e.clientY;
+
+  if (tDragMode === 1) {
+    // 平移逻辑
+    var factor = tOrbit.radius * 0.2;
+    tPan.x -= (dx * Math.cos(tOrbit.theta) - dy * Math.sin(tOrbit.theta)) * factor;
+    tPan.y -= (dx * Math.sin(tOrbit.theta) + dy * Math.cos(tOrbit.theta)) * factor;
+  } else if (tDragMode === 2) {
+    // 🌟 核心：随意视角空间旋转逻辑
+    tOrbit.theta -= dx * 0.01;
+    tOrbit.phi = Math.max(0.1, Math.min(Math.PI/2 - 0.05, tOrbit.phi - dy * 0.01));
+  }
+  termDirty = true;
+});
+
+window.addEventListener('mouseup', function() { 
+  tDragMode = 0; 
+  tw.classList.remove('dragging'); 
+});
+
+// 滚轮缩放
+tw.addEventListener('wheel', function(e) {
+  e.preventDefault();
+  if(e.deltaY > 0) tOrbit.radius *= 1.08;
+  else tOrbit.radius /= 1.08;
+  tOrbit.radius = Math.max(0.5, Math.min(10, tOrbit.radius));
+  termDirty = true;
+}, {passive:false});
+
+// 移动端多点触控双指旋转
+var tTouchStartDist = 0;
+tw.addEventListener('touchstart', function(e) {
+  tFollow = false;
+  document.getElementById('btn-follow').textContent = '跟随 OFF';
+  if (e.touches.length === 1) {
+    tDragMode = 1; tDragX = e.touches[0].clientX; tDragY = e.touches[0].clientY;
+  } else if (e.touches.length === 2) {
+    tDragMode = 2; // 双指直接开启旋转模式
+    tTouchStartDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    tDragX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    tDragY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+  }
+}, {passive: true});
+
+tw.addEventListener('touchmove', function(e) {
+  if (tDragMode === 0) return;
+  if (e.touches.length === 1 && tDragMode === 1) {
+    var dx = e.touches[0].clientX - tDragX;
+    var dy = e.touches[0].clientY - tDragY;
+    tDragX = e.touches[0].clientX; tDragY = e.touches[0].clientY;
+    tPan.x -= dx * 0.15; tPan.y -= dy * 0.15;
+    termDirty = true;
+  } else if (e.touches.length === 2 && tDragMode === 2) {
+    var midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    var midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    var dx = midX - tDragX; var dy = midY - tDragY;
+    tDragX = midX; tDragY = midY;
+    
+    // 旋转
+    tOrbit.theta -= dx * 0.015;
+    tOrbit.phi = Math.max(0.1, Math.min(Math.PI/2 - 0.05, tOrbit.phi - dy * 0.015));
+    
+    // 缩放
+    var dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+    if(tTouchStartDist > 0) {
+      tOrbit.radius /= (dist / tTouchStartDist);
+      tOrbit.radius = Math.max(0.5, Math.min(10, tOrbit.radius));
+      tTouchStartDist = dist;
+    }
+    termDirty = true;
+  }
+}, {passive: false});
+
+tw.addEventListener('touchend', function() { tDragMode = 0; });
+
+document.getElementById('btn-np').addEventListener('click',function(){genPlanet();});
+document.getElementById('btn-land').addEventListener('click',doAutoLand);
+document.getElementById('btn-to').addEventListener('click',doAutoTakeoff);
+document.getElementById('btn-follow').addEventListener('click',function(){
+  tFollow=!tFollow;this.textContent='跟随 '+(tFollow?'ON':'OFF');termDirty=true;
+});
+document.getElementById('btn-clearsv').addEventListener('click',function(){
+  survey.length=0;termDirty=true;tLog('[SYS] 3D地形数据已重置清空');
+});
+
+genPlanet();
 loop();
 
-})();
+}());
 </script>
 </body>
 </html>
