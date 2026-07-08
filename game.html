@@ -34,6 +34,18 @@
     border:1px solid rgba(65,232,200,.4);background:rgba(7,20,18,.75);display:none}
   #keys{bottom:12px;left:14px;color:var(--dim);line-height:1.9;background:rgba(7,9,12,.55);padding:8px 12px;border:1px solid var(--line)}
   #keys b{color:var(--ink);font-weight:600}
+  .back-btn{position:absolute;top:14px;right:14px;z-index:5;pointer-events:auto;
+    font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-decoration:none;
+    color:var(--ink);padding:6px 12px;border:1px solid var(--line);
+    background:rgba(7,9,12,.72);backdrop-filter:blur(4px);transition:border-color .15s,color .15s}
+  .back-btn:hover{border-color:var(--phos);color:var(--phos)}
+  .back-btn:focus-visible{outline:1px solid var(--phos);outline-offset:2px}
+  #gyro{right:14px;bottom:12px;width:118px;height:118px}
+  #warnHud{top:52px;left:50%;transform:translateX(-50%);padding:5px 14px;display:none;
+    color:#ff6b5e;border:1px solid rgba(255,107,94,.55);background:rgba(30,8,8,.82);letter-spacing:.1em}
+  #fpvHud{display:none;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:rgba(255,90,77,.92)}
+  #fpvHud .cross{font-size:20px;line-height:1}
+  #fpvHud .dist{margin-top:8px;font-size:11px;letter-spacing:.14em;text-shadow:0 0 6px rgba(0,0,0,.8)}
 
   /* ---------- 2D 终端 ---------- */
   #terminal{width:390px;flex:none;display:flex;flex-direction:column;background:var(--panel);
@@ -57,11 +69,16 @@
   .t label{display:block;font-size:9px;color:var(--dim);letter-spacing:.18em;margin-bottom:2px}
   .t data{font-size:14px;color:var(--amber)}
   .t data em{font-style:normal;font-size:10px;color:var(--dim);margin-left:2px}
-  #mastBar{grid-column:1/-1;height:8px;border:1px solid var(--line);background:var(--panel-2);position:relative}
-  #mastFill{position:absolute;inset:1px auto 1px 1px;width:20%;background:linear-gradient(90deg,#2a5e55,var(--phos));transition:width .1s}
+  #bars{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:2px}
+  .bar label{display:block;font-size:9px;color:var(--dim);letter-spacing:.18em;margin-bottom:3px}
+  .bt{height:8px;border:1px solid var(--line);background:var(--panel-2);position:relative}
+  .bf{position:absolute;inset:1px auto 1px 1px;transition:width .1s}
+  #mastFill{background:linear-gradient(90deg,#2a5e55,var(--phos))}
+  #fuelFill{background:linear-gradient(90deg,#7a5626,var(--amber))}
+  #hullFill{background:linear-gradient(90deg,#2a5e55,var(--phos))}
 
   canvas.term{display:block;width:100%;background:var(--panel-2);border:1px solid var(--line)}
-  #profile{height:130px}
+  #profile{height:158px}
   #navmap{height:150px}
 
   #logWrap{flex:1;min-height:60px;display:flex;flex-direction:column;padding:10px 14px 6px}
@@ -69,6 +86,7 @@
   #log .t0{color:var(--dim)}
   #log .pk{color:var(--phos)}
   #log .wr{color:var(--amber)}
+  #log .er{color:#ff6b5e}
   #log::-webkit-scrollbar{width:4px}
   #log::-webkit-scrollbar-thumb{background:var(--line)}
 
@@ -93,11 +111,15 @@
 <div id="app">
   <div id="viewport">
     <canvas id="gl"></canvas>
+    <a href="index.html" class="back-btn">← 返回主页</a>
     <div class="hud" id="modeChip"><span class="dot"></span><span id="modeTxt">手动模式 MANUAL</span></div>
     <div class="hud" id="scanBanner">▚ 正在扫描地形剖面…</div>
+    <div class="hud" id="warnHud"></div>
+    <canvas class="hud" id="gyro"></canvas>
+    <div class="hud" id="fpvHud"><div class="cross">┼</div><div class="dist" id="fpvDist">LASER ∅</div></div>
     <div class="hud" id="keys">
-      <b>W/S</b> 前进·后退 &nbsp; <b>A/D</b> 转向 &nbsp; <b>Q/E</b> 桅杆升降<br>
-      <b>空格</b> 扫描并回传 &nbsp; <b>M</b> 手动/自动 &nbsp; <b>拖拽/滚轮</b> 视角
+      <b>W/S</b> 前进·后退 &nbsp; <b>A/D</b> 转向 &nbsp; <b>Q/E</b> 桅杆升降 &nbsp; <b>Shift/C</b> 涡轮升·降<br>
+      <b>空格</b> 扫描回传 &nbsp; <b>Tab</b> 第一/第三人称 &nbsp; <b>M</b> 手动/自动 &nbsp; <b>拖拽/滚轮</b> 视角
     </div>
   </div>
 
@@ -116,12 +138,18 @@
         <div class="t"><label>航向</label><data id="th">0<em>°</em></data></div>
         <div class="t"><label>速度</label><data id="tv">0.0<em>m/s</em></data></div>
         <div class="t"><label>数据包</label><data id="tp">0</data></div>
-        <div id="mastBar" title="桅杆高度"><div id="mastFill"></div></div>
+        <div class="t"><label>前向激光</label><data id="tf">--<em>m</em></data></div>
+        <div class="t"><label>垂直激光</label><data id="tvl">0<em>m</em></data></div>
+        <div id="bars">
+          <div class="bar"><label>桅杆</label><div class="bt"><div id="mastFill" class="bf" style="width:25%"></div></div></div>
+          <div class="bar"><label>推进剂</label><div class="bt"><div id="fuelFill" class="bf" style="width:100%"></div></div></div>
+          <div class="bar"><label>完整度</label><div class="bt"><div id="hullFill" class="bf" style="width:100%"></div></div></div>
+        </div>
       </div>
     </div>
 
     <div class="sec">
-      <div class="cap"><span>地形剖面 TERRAIN PROFILE</span><span id="profTag">待回传</span></div>
+      <div class="cap"><span>高度平面图 · 深=高 浅=低</span><span id="profTag">待回传</span></div>
       <canvas id="profile" class="term"></canvas>
     </div>
 
@@ -140,7 +168,8 @@
       <button id="btnScan">扫描 [空格]</button>
       <button id="btnUp">桅杆升 [Q]</button>
       <button id="btnDown">桅杆降 [E]</button>
-      <button id="btnTerrain">重生成地形</button>
+      <button id="btnFly">推进器 [Shift]</button>
+      <button id="btnTerrain" style="grid-column:1/-1">重生成地形</button>
     </div>
   </aside>
 </div>
@@ -166,15 +195,13 @@ function fbm(x,z){
   for(let o=0;o<5;o++){ f += noise2(x*fr, z*fr)*amp; tot+=amp; amp*=.5; fr*=2.03; }
   return f/tot;
 }
-const WORLD = 420;                 // 地形边长(米)
-function terrainH(x,z){            // 世界坐标 → 高程
+const CHUNK = 120;                 // 地形分块边长(米),无限延伸
+function terrainH(x,z){            // 世界坐标 → 高程(解析式,处处可采样)
   const s = 0.011;
   let h = fbm(x*s+37.2, z*s+91.7);
   h = Math.pow(h, 1.35);
-  // 边缘抬升成环形山壁,把探测车留在盆地里
-  const r = Math.max(Math.abs(x), Math.abs(z)) / (WORLD/2);
-  const rim = Math.max(0, (r-0.82)/0.18);
-  return (h-0.42)*36 + rim*rim*30;
+  const macro = fbm(x*.0016+7.7, z*.0016+3.1);   // 大尺度地貌起伏
+  return (h-.42)*36 + (macro-.5)*44;
 }
 
 /* ================= 场景 ================= */
@@ -191,53 +218,90 @@ const sun = new THREE.DirectionalLight(0xffd9b0, 1.15);
 sun.position.set(-120, 160, 60);
 scene.add(sun);
 
-/* ---- 地形网格 ---- */
-let terrainMesh = null;
-function buildTerrain(){
-  if(terrainMesh){ scene.remove(terrainMesh); terrainMesh.geometry.dispose(); terrainMesh.material.dispose(); }
-  const seg = 170;
-  const geo = new THREE.PlaneGeometry(WORLD, WORLD, seg, seg);
+/* ---- 无限地形:分块流式加载(岩石随块生成,确定性哈希保证复访一致) ---- */
+const CSEG=36, VIEW=2;                    // 每块细分 / 加载半径(块)
+const chunks = new Map();                 // "i,j" -> {mesh, rockGroup, rocks[]}
+const terrainMat = new THREE.MeshLambertMaterial({vertexColors:true});
+const rockGeo = new THREE.DodecahedronGeometry(1,0);
+const rockMat = new THREE.MeshLambertMaterial({color:0x6b4433});
+const cLow=new THREE.Color(0x4f2c20), cMid=new THREE.Color(0x9c5a3a), cHigh=new THREE.Color(0xd8a071);
+
+function buildChunk(ci,cj){
+  const geo = new THREE.PlaneGeometry(CHUNK,CHUNK,CSEG,CSEG);
   geo.rotateX(-Math.PI/2);
-  const pos = geo.attributes.position;
-  const colors = new Float32Array(pos.count*3);
-  const cLow  = new THREE.Color(0x4f2c20);
-  const cMid  = new THREE.Color(0x9c5a3a);
-  const cHigh = new THREE.Color(0xd8a071);
-  const c = new THREE.Color();
+  const ox=ci*CHUNK+CHUNK/2, oz=cj*CHUNK+CHUNK/2;
+  const pos=geo.attributes.position;
+  const colors=new Float32Array(pos.count*3);
+  const normals=new Float32Array(pos.count*3);
+  const c=new THREE.Color(); const e=CHUNK/CSEG;
   for(let i=0;i<pos.count;i++){
-    const x=pos.getX(i), z=pos.getZ(i);
-    const h = terrainH(x,z);
+    const x=pos.getX(i)+ox, z=pos.getZ(i)+oz;
+    const h=terrainH(x,z);
     pos.setY(i,h);
-    const t = THREE.MathUtils.clamp((h+14)/34, 0, 1);
-    if(t<.5) c.copy(cLow).lerp(cMid, t*2); else c.copy(cMid).lerp(cHigh,(t-.5)*2);
-    const dust = 0.9 + hash(i,i*7)*0.2;
+    // 解析法线:相邻块共享同一函数,不会出现接缝阴影
+    const nx=terrainH(x-e,z)-terrainH(x+e,z);
+    const nz=terrainH(x,z-e)-terrainH(x,z+e);
+    const inv=1/Math.hypot(nx,2*e,nz);
+    normals[i*3]=nx*inv; normals[i*3+1]=2*e*inv; normals[i*3+2]=nz*inv;
+    const t=THREE.MathUtils.clamp((h+22)/44,0,1);
+    if(t<.5) c.copy(cLow).lerp(cMid,t*2); else c.copy(cMid).lerp(cHigh,(t-.5)*2);
+    const dust=.9+hash(i,ci*131+cj*7)*0.2;
     colors[i*3]=c.r*dust; colors[i*3+1]=c.g*dust; colors[i*3+2]=c.b*dust;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
-  geo.computeVertexNormals();
-  terrainMesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({vertexColors:true}));
-  scene.add(terrainMesh);
-  buildRocks();
-  buildNavBackdrop();
-}
-
-/* ---- 散石 ---- */
-let rockGroup=null;
-function buildRocks(){
-  if(rockGroup){ scene.remove(rockGroup); }
-  rockGroup = new THREE.Group();
-  const g = new THREE.DodecahedronGeometry(1,0);
-  const m = new THREE.MeshLambertMaterial({color:0x6b4433});
-  for(let i=0;i<140;i++){
-    const x=(hash(i,3)-.5)*WORLD*.85, z=(hash(i,11)-.5)*WORLD*.85;
-    const s=.4+hash(i,29)*1.8;
-    const rock=new THREE.Mesh(g,m);
+  geo.setAttribute('normal', new THREE.BufferAttribute(normals,3));
+  const mesh=new THREE.Mesh(geo, terrainMat);
+  mesh.position.set(ox,0,oz);
+  // 本块岩石(实体)
+  const rg=new THREE.Group(); const rocks=[];
+  const cnt=3+((hash(ci*91+17, cj*53+29)*6)|0);
+  for(let n=0;n<cnt;n++){
+    const x=ci*CHUNK + hash(ci*7+n*13+1, cj*11+n*17+3)*CHUNK;
+    const z=cj*CHUNK + hash(ci*19+n*23+5, cj*29+n*31+7)*CHUNK;
+    if(x*x+z*z<64) continue;                // 着陆点附近留空
+    const s=.4+hash(ci*3+n, cj*5+n*9)*1.9;
+    const sy=s*(.6+hash(ci+n*7, cj+n*3)*.5);
+    const rock=new THREE.Mesh(rockGeo, rockMat);
     rock.position.set(x, terrainH(x,z)+s*.3, z);
-    rock.scale.set(s, s*(.6+hash(i,41)*.5), s);
-    rock.rotation.set(hash(i,5)*3, hash(i,7)*3, hash(i,13)*3);
-    rockGroup.add(rock);
+    rock.scale.set(s, sy, s);
+    rock.rotation.set(hash(n,ci)*3, hash(n,cj)*3, hash(ci,n)*3);
+    rg.add(rock);
+    rocks.push({x, z, r:s*.95, top:terrainH(x,z)+s*.3+sy});
   }
-  scene.add(rockGroup);
+  scene.add(mesh); scene.add(rg);
+  chunks.set(ci+','+cj, {mesh, rockGroup:rg, rocks});
+}
+function disposeChunk(k){
+  const c=chunks.get(k); if(!c) return;
+  scene.remove(c.mesh); scene.remove(c.rockGroup);
+  c.mesh.geometry.dispose();
+  chunks.delete(k);
+}
+function ensureChunks(budget){
+  const ci=Math.floor(st.x/CHUNK), cj=Math.floor(st.z/CHUNK);
+  const queue=[];
+  for(let i=ci-VIEW;i<=ci+VIEW;i++)for(let j=cj-VIEW;j<=cj+VIEW;j++){
+    if(!chunks.has(i+','+j)) queue.push([i,j]);
+  }
+  queue.sort((a,b)=>((a[0]-ci)**2+(a[1]-cj)**2)-((b[0]-ci)**2+(b[1]-cj)**2));
+  for(let n=0;n<Math.min(budget,queue.length);n++) buildChunk(queue[n][0],queue[n][1]);
+  for(const k of [...chunks.keys()]){                // 卸载远处
+    const [i,j]=k.split(',').map(Number);
+    if(Math.abs(i-ci)>VIEW+1 || Math.abs(j-cj)>VIEW+1) disposeChunk(k);
+  }
+}
+function rockNear(px,pz,extra){
+  for(const ch of chunks.values())
+    for(const rk of ch.rocks){
+      const ex=rk.x-px, ez=rk.z-pz, rr=rk.r+extra;
+      if(ex*ex+ez*ez < rr*rr) return rk;
+    }
+  return null;
+}
+function resetWorld(){
+  for(const k of [...chunks.keys()]) disposeChunk(k);
+  ensureChunks(99);                                  // 出生点周边同步铺满
+  buildNavBackdrop();
 }
 
 /* ================= 探测车 ================= */
@@ -280,12 +344,55 @@ scene.add(rover);
   mast.add(pole, head);
   rover.add(mast);
   rover.userData.mast = {group:mast, pole, head, lamp};
+  // ---- 垂直起降动力:四台垂直涡轮 + 尾部推进涡轮 ----
+  const propMat = new THREE.MeshLambertMaterial({color:0x9aa4ac});
+  const bladeGeo = new THREE.BoxGeometry(1.1,.035,.13);
+  const props = {lift:[], rear:null};
+  for(const sx of [-1.5,1.5]) for(const sz of [-1.35,1.35]){
+    const pod = new THREE.Group(); pod.position.set(sx,1.45,sz);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(.62,.09,.16), bodyMat);
+    arm.position.x = -sx*.44;
+    const nac = new THREE.Mesh(new THREE.CylinderGeometry(.19,.23,.3,10), darkMat);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.62,.05,8,22), bodyMat);
+    ring.rotation.x = Math.PI/2; ring.position.y=.18;
+    const spin = new THREE.Group(); spin.position.y=.2;
+    const b1 = new THREE.Mesh(bladeGeo, propMat);
+    const b2 = b1.clone(); b2.rotation.y = Math.PI/2;
+    spin.add(b1,b2);
+    pod.add(arm,nac,ring,spin);
+    rover.add(pod);
+    props.lift.push(spin);
+  }
+  {
+    const tail = new THREE.Group(); tail.position.set(0,1.15,-1.95);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(.5,.06,8,22), bodyMat); // 默认朝 Z,正对车尾
+    const hub  = new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.3,8), darkMat);
+    hub.rotation.x = Math.PI/2;
+    const spin = new THREE.Group();
+    for(let n=0;n<3;n++){
+      const b = new THREE.Mesh(new THREE.BoxGeometry(.09,.42,.035), propMat);
+      const holder = new THREE.Group();
+      b.position.y=.24;
+      holder.add(b); holder.rotation.z = n*Math.PI*2/3;
+      spin.add(holder);
+    }
+    tail.add(ring,hub,spin);
+    rover.add(tail);
+    props.rear = spin;
+  }
+  rover.userData.props = props;
 }
 const MAST_MIN=.55, MAST_MAX=2.6;
 
 /* ================= 状态 ================= */
 const st = {
-  x:0, z:0, heading:0, speed:0,
+  x:0, z:0, y:0, heading:0, speed:0,
+  vy:0, air:false, fuel:1,        // 垂直速度 / 是否离地 / 推进剂
+  pitch:0, roll:0,                // 陀螺仪姿态(弧度)
+  hull:100, disabled:0,           // 结构完整度 / 离线重启倒计时
+  tiltT:0, shake:0, lastHit:-9,   // 倾覆计时 / 镜头震动 / 碰撞冷却
+  cam:'tpv',                      // tpv 第三人称 | fpv 第一人称
+  laser:null, vlaser:0,           // 前向激光命中 / 垂直激光离地读数
   mast:.25,                    // 0..1
   mode:'manual',               // manual | auto
   auto:{phase:'drive', wpIdx:0, wps:[]},
@@ -301,18 +408,33 @@ addEventListener('keydown', e=>{
   const k = e.key.toLowerCase();
   keys[k]=true;
   if(k===' '){ e.preventDefault(); startScan(true); }
+  if(k==='tab'){ e.preventDefault(); toggleCam(); }
   if(k==='m') toggleMode();
 });
 addEventListener('keyup', e=>keys[e.key.toLowerCase()]=false);
 
-/* ---- 相机轨道 ---- */
+/* ---- 相机轨道 / 第一人称 ---- */
 let camYaw=0, camPitch=.42, camDist=13;
+let fpvYaw=0, fpvPitch=-.06;
 let dragging=false, px=0, py=0;
+function toggleCam(){
+  st.cam = st.cam==='fpv' ? 'tpv' : 'fpv';
+  camera.fov = st.cam==='fpv' ? 72 : 58;
+  camera.updateProjectionMatrix();
+  document.getElementById('fpvHud').style.display = st.cam==='fpv' ? 'block' : 'none';
+  if(st.cam==='fpv'){ fpvYaw=0; fpvPitch=-.06; }
+  syncModeUI();
+}
 canvas.addEventListener('pointerdown', e=>{dragging=true;px=e.clientX;py=e.clientY;canvas.setPointerCapture(e.pointerId);});
 canvas.addEventListener('pointermove', e=>{
   if(!dragging) return;
-  camYaw   -= (e.clientX-px)*.006;
-  camPitch  = THREE.MathUtils.clamp(camPitch+(e.clientY-py)*.005, .12, 1.25);
+  if(st.cam==='fpv'){
+    fpvYaw   = THREE.MathUtils.clamp(fpvYaw  -(e.clientX-px)*.004, -2.2, 2.2);
+    fpvPitch = THREE.MathUtils.clamp(fpvPitch-(e.clientY-py)*.004, -1.1, 1.0);
+  }else{
+    camYaw   -= (e.clientX-px)*.006;
+    camPitch  = THREE.MathUtils.clamp(camPitch+(e.clientY-py)*.005, .12, 1.25);
+  }
   px=e.clientX; py=e.clientY;
 });
 canvas.addEventListener('pointerup', ()=>dragging=false);
@@ -320,58 +442,126 @@ canvas.addEventListener('wheel', e=>{
   camDist = THREE.MathUtils.clamp(camDist + e.deltaY*.01, 6.5, 26);
 }, {passive:true});
 
-/* ================= 扫描 ================= */
-const beamGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);
-const beam = new THREE.Line(beamGeo, new THREE.LineBasicMaterial({color:0x41e8c8,transparent:true,opacity:.9}));
-beam.visible=false; scene.add(beam);
+/* ================= 扫描(区域高度平面图) ================= */
+const SWEEP_N=40;
+const sweep = new THREE.Line(
+  new THREE.BufferGeometry().setFromPoints(Array.from({length:SWEEP_N},()=>new THREE.Vector3())),
+  new THREE.LineBasicMaterial({color:0x41e8c8,transparent:true,opacity:.95}));
+const beam = new THREE.Line(
+  new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),
+  new THREE.LineBasicMaterial({color:0x41e8c8,transparent:true,opacity:.4}));
+sweep.visible=beam.visible=false; scene.add(sweep); scene.add(beam);
 
 function scanLength(){ return 16 + st.mast*46; }   // 桅杆越高,看得越远
 
 function startScan(fromUser){
-  if(st.scanning) return;
-  const len = scanLength();
+  if(st.scanning || st.disabled>0) return;
+  const len = scanLength(), wid = len*.6;
   const dx=Math.sin(st.heading), dz=Math.cos(st.heading);
-  const N=72, samples=new Float32Array(N);
-  for(let i=0;i<N;i++){
-    const d = (i/(N-1))*len;
-    samples[i] = terrainH(st.x+dx*d, st.z+dz*d);
+  const rx=dz, rz=-dx;                              // 车体右向
+  const NX=40, NZ=54;
+  const heights=new Float32Array(NX*NZ);
+  let mn=1e9, mx=-1e9;
+  for(let j=0;j<NZ;j++)for(let i=0;i<NX;i++){
+    const v=j/(NZ-1)*len, u=(i/(NX-1)-.5)*wid;
+    const h=terrainH(st.x+dx*v+rx*u, st.z+dz*v+rz*u);
+    heights[j*NX+i]=h;
+    if(h<mn)mn=h; if(h>mx)mx=h;
   }
-  st.scanning = {t0:st.clock, dur:1.3, ox:st.x, oz:st.z, dx, dz, len, samples};
+  st.scanning = {t0:st.clock, dur:1.6, ox:st.x, oz:st.z, dx, dz, rx, rz, len, wid, NX, NZ, heights, mn, mx};
   document.getElementById('scanBanner').style.display='block';
-  if(fromUser) log(`发起地形扫描 · 桅杆 ${(st.mast*100)|0}% · 射程 ${len.toFixed(0)}m`);
+  if(fromUser) log(`发起区域扫描 · 桅杆 ${(st.mast*100)|0}% · 覆盖 ${len.toFixed(0)}×${wid.toFixed(0)}m`);
 }
 
 function finishScan(){
   const s = st.scanning; st.scanning=null;
   document.getElementById('scanBanner').style.display='none';
   st.packets++;
-  // 3D 残留标记线
-  const pts=[]; const N=s.samples.length;
-  for(let i=0;i<N;i++){
-    const d=(i/(N-1))*s.len;
-    pts.push(new THREE.Vector3(s.ox+s.dx*d, s.samples[i]+.25, s.oz+s.dz*d));
-  }
+  // 3D 残留:扫描区边框
+  const hw=s.wid/2, pts=[];
+  const per=(u,v)=>{
+    const px=s.ox+s.dx*v+s.rx*u, pz=s.oz+s.dz*v+s.rz*u;
+    return new THREE.Vector3(px, terrainH(px,pz)+.3, pz);
+  };
+  for(let i=0;i<=10;i++) pts.push(per(-hw+i/10*s.wid, 0));
+  for(let i=0;i<=10;i++) pts.push(per( hw, i/10*s.len));
+  for(let i=0;i<=10;i++) pts.push(per( hw-i/10*s.wid, s.len));
+  for(let i=0;i<=10;i++) pts.push(per(-hw, s.len-i/10*s.len));
   const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
       new THREE.LineBasicMaterial({color:0x41e8c8, transparent:true, opacity:.9}));
   scene.add(line);
   st.scanMarks.push({line, born:st.clock});
   // 回传终端
-  const mn=Math.min(...s.samples), mx=Math.max(...s.samples);
-  drawProfile(s, mn, mx);
+  lastScan = s;
+  renderProfile();
   navScans.push({x:s.ox, z:s.oz});
   const id = 'PKT-'+String(st.packets).padStart(3,'0');
   document.getElementById('profTag').textContent = id;
   document.getElementById('tp').textContent = st.packets;
-  log(`<span class="pk">${id}</span> 剖面回传 ${s.samples.length} 点 · ${s.len.toFixed(0)}m · 高差 ${(mx-mn).toFixed(1)}m`);
+  log(`<span class="pk">${id}</span> 高度平面图回传 ${s.NX}×${s.NZ} 点 · ${s.len.toFixed(0)}×${s.wid.toFixed(0)}m · 高差 ${(s.mx-s.mn).toFixed(1)}m`);
+}
+
+/* ================= 激光检测器 ================= */
+const LASER_MAX=30, LASER_K=5;                     // 量程 / 起飞判定标定系数
+const laserFwd = new THREE.Line(
+  new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),
+  new THREE.LineBasicMaterial({color:0xff5a4d,transparent:true,opacity:.85}));
+const laserVert = new THREE.Line(
+  new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),
+  new THREE.LineBasicMaterial({color:0xff5a4d,transparent:true,opacity:.28}));
+const laserDot = new THREE.Mesh(new THREE.SphereGeometry(.13,8,8),
+  new THREE.MeshBasicMaterial({color:0xff5a4d}));
+scene.add(laserFwd); scene.add(laserVert); scene.add(laserDot);
+
+function updateLaser(){
+  rover.updateMatrixWorld(true);
+  // 前向激光:车头发射,沿车体姿态方向步进检测地面与岩石
+  const o = rover.localToWorld(new THREE.Vector3(0,.95,1.9));
+  const dir = new THREE.Vector3(0,0,1).applyQuaternion(rover.quaternion).normalize();
+  let hit=null;
+  for(let t=1.0; t<=LASER_MAX; t+=.4){
+    const px=o.x+dir.x*t, py=o.y+dir.y*t, pz=o.z+dir.z*t;
+    if(py<=terrainH(px,pz)){ hit={t, kind:'ground', px, py:terrainH(px,pz), pz}; break; }
+    const rk=rockNear(px,pz,.2);
+    if(rk && py<rk.top){ hit={t, kind:'rock', px, py, pz}; break; }
+  }
+  st.laser=hit;
+  const p=laserFwd.geometry.attributes.position;
+  p.setXYZ(0,o.x,o.y,o.z);
+  if(hit) p.setXYZ(1,hit.px,hit.py,hit.pz);
+  else    p.setXYZ(1,o.x+dir.x*LASER_MAX, o.y+dir.y*LASER_MAX, o.z+dir.z*LASER_MAX);
+  p.needsUpdate=true;
+  laserFwd.material.opacity = hit? .9 : .22;
+  laserDot.visible=!!hit;
+  if(hit) laserDot.position.set(hit.px,hit.py,hit.pz);
+  // 垂直激光:桅杆头向下测离地(垂直测量数)
+  const hp=new THREE.Vector3();
+  rover.userData.mast.head.getWorldPosition(hp);
+  const gh=terrainH(hp.x,hp.z);
+  st.vlaser=Math.max(0, hp.y-gh);
+  const q=laserVert.geometry.attributes.position;
+  q.setXYZ(0,hp.x,hp.y,hp.z); q.setXYZ(1,hp.x,gh,hp.z);
+  q.needsUpdate=true;
+}
+function pathClear(dist){                          // 当前高度上前方航路是否畅通
+  const fx=Math.sin(st.heading), fz=Math.cos(st.heading);
+  for(let t=2; t<=dist; t+=1.2){
+    const px=st.x+fx*t, pz=st.z+fz*t;
+    if(terrainH(px,pz) > st.y-1.2) return false;
+    const rk=rockNear(px,pz,1.2);
+    if(rk && rk.top > st.y-1) return false;
+  }
+  return true;
 }
 
 /* ================= 自动巡查 ================= */
 function genWaypoints(){
-  const wps=[]; const R=WORLD*.33;
+  const wps=[]; const R=130;                 // 围绕当前位置的勘测网格
+  const bx=st.x, bz=st.z;
   const rows=4;
   for(let r=0;r<rows;r++){
-    const z = -R + (2*R)*(r/(rows-1));
-    const xs = r%2 ? [R,-R] : [-R,R];
+    const z = bz - R + (2*R)*(r/(rows-1));
+    const xs = r%2 ? [bx+R,bx-R] : [bx-R,bx+R];
     xs.forEach(x=>wps.push({x,z}));
   }
   return wps;
@@ -379,27 +569,32 @@ function genWaypoints(){
 function toggleMode(){
   if(st.mode==='manual'){
     st.mode='auto';
-    st.auto={phase:'drive', wpIdx:nearestWp(), wps:st.auto.wps.length?st.auto.wps:genWaypoints()};
-    log('<span class="wr">已切换自动巡查</span> · 沿网格航线执行「行进 → 升杆 → 扫描 → 回传」');
+    st.auto={phase:'drive', wpIdx:0, wps:genWaypoints()};
+    log('<span class="wr">已切换自动巡查</span> · 围绕当前位置生成勘测网格,执行「行进 → 升杆 → 扫描 → 回传」');
   }else{
     st.mode='manual';
     log('已切换手动遥控');
   }
   syncModeUI();
 }
-function nearestWp(){
-  const wps = st.auto.wps.length?st.auto.wps:genWaypoints();
-  st.auto.wps=wps;
-  let bi=0,bd=1e9;
-  wps.forEach((w,i)=>{const d=(w.x-st.x)**2+(w.z-st.z)**2; if(d<bd){bd=d;bi=i;}});
-  return bi;
-}
 function syncModeUI(){
   const auto = st.mode==='auto';
   document.getElementById('modeChip').classList.toggle('auto', auto);
-  document.getElementById('modeTxt').textContent = auto?'自动巡查 AUTO-SURVEY':'手动模式 MANUAL';
+  document.getElementById('modeTxt').textContent =
+    (auto?'自动巡查 AUTO-SURVEY':'手动模式 MANUAL') + (st.cam==='fpv'?' · FPV':'');
   document.getElementById('btnMode').classList.toggle('on', auto);
   document.getElementById('btnMode').textContent = auto?'返回手动遥控 [M]':'切换自动巡查 [M]';
+}
+
+function steerTo(wp, dt, spd){                 // 朝航点转向并趋近目标速度,返回剩余距离
+  const ddx=wp.x-st.x, ddz=wp.z-st.z;
+  const want=Math.atan2(ddx,ddz);
+  let diff=want-st.heading;
+  while(diff> Math.PI) diff-=2*Math.PI;
+  while(diff<-Math.PI) diff+=2*Math.PI;
+  st.heading += THREE.MathUtils.clamp(diff, -1.1*dt, 1.1*dt);
+  st.speed += (spd-st.speed)*dt*2;
+  return Math.hypot(ddx,ddz);
 }
 
 function updateAuto(dt){
@@ -413,9 +608,42 @@ function updateAuto(dt){
     while(diff> Math.PI) diff-=2*Math.PI;
     while(diff<-Math.PI) diff+=2*Math.PI;
     st.heading += THREE.MathUtils.clamp(diff, -1.1*dt, 1.1*dt);
+    // 激光判定:前向测到地面且距离 < 垂直测量数×标定系数,或测到岩石 → 直接起飞
+    if(!st.air && st.laser && st.fuel>.15 &&
+       ( (st.laser.kind==='rock'   && st.laser.t < 12) ||
+         (st.laser.kind==='ground' && st.laser.t < st.vlaser*LASER_K) )){
+      a.phase='fly';
+      log(`<span class="wr">激光检测:前方 ${st.laser.t.toFixed(1)}m ${st.laser.kind==='rock'?'岩石':'地面'}`+
+          `(垂直测量 ${st.vlaser.toFixed(1)}m × ${LASER_K})· 自动起飞,沿航线飞越</span>`);
+      return;
+    }
+    // 低速兜底:小障碍仍走地面绕行
+    const afx=Math.sin(st.heading), afz=Math.cos(st.heading);
+    const rk = rockNear(st.x+afx*5, st.z+afz*5, 3);
+    if(rk){
+      const cross = afx*(rk.z-st.z) - afz*(rk.x-st.x);
+      st.heading += (cross>0?1:-1)*1.5*dt;
+    }
     const target = Math.abs(diff)>.6 ? 2.2 : 6.5;
     st.speed += (target-st.speed)*dt*2;
     if(dist<4){ st.speed*= .9; a.phase='raise'; log(`抵达航点 ${a.wpIdx+1}/${a.wps.length},升起桅杆`);}
+  }else if(a.phase==='fly'){
+    // 飞行中保持沿规划航线朝当前航点前进
+    const dd = steerTo(wp, dt, 5.5);
+    if(st.fuel<=.08){
+      a.phase='land';
+      log('<span class="wr">推进剂不足,沿航线就地降落</span>');
+    }else if(!pathClear(15)){
+      st.vy += 22*dt;                             // 爬升直到航路畅通
+      st.fuel = Math.max(0, st.fuel - dt*.2);
+    }else if(pathClear(18)){
+      a.phase='land';                             // 悬停怠速自动缓降
+    }
+    if(dd<4) a.phase='land';
+  }else if(a.phase==='land'){
+    steerTo(wp, dt, 3);
+    if(st.air && !pathClear(9) && st.fuel>.12) a.phase='fly';   // 降落途中又遇障碍,再爬升
+    if(!st.air){ a.phase='drive'; log('着陆成功,继续沿规划航线行进'); }
   }else if(a.phase==='raise'){
     st.speed*= (1-3*dt);
     st.mast = Math.min(1, st.mast + dt*.55);
@@ -424,69 +652,189 @@ function updateAuto(dt){
     if(!st.scanning){ a.phase='lower'; }
   }else if(a.phase==='lower'){
     st.mast = Math.max(.3, st.mast - dt*.55);
-    if(st.mast<=.3){ a.wpIdx=(a.wpIdx+1)%a.wps.length; a.phase='drive'; }
+    if(st.mast<=.3){
+      a.wpIdx++;
+      if(a.wpIdx>=a.wps.length){
+        a.wps=genWaypoints(); a.wpIdx=0;
+        log('本轮航线勘测完成,围绕当前位置续生成新网格');
+      }
+      a.phase='drive';
+    }
+  }
+}
+
+/* ================= 事故系统 ================= */
+const warnEl = document.getElementById('warnHud');
+let flashT=0, flashMsg='';
+function accident(reason, dmg){
+  if(st.disabled>0) return;
+  st.hull = Math.max(0, st.hull - dmg);
+  st.shake = Math.min(1, .35 + dmg*.03);
+  flashMsg = reason; flashT = 2.4;
+  log(`<span class="er">⚠ 事故:${reason} · 结构 −${dmg}% → 剩余 ${st.hull}%</span>`);
+  if(st.hull<=0){
+    st.disabled = 6; st.speed = 0;
+    if(st.mode==='auto'){ st.mode='manual'; syncModeUI(); }
+    log('<span class="er">结构完整度归零 · 系统离线,地面站远程重启中(6 秒)…</span>');
+  }
+}
+function updateWarn(tilt, dt){
+  flashT -= dt;
+  if(st.disabled>0){
+    warnEl.style.display='block';
+    warnEl.textContent = `⊘ 系统离线 · 重启 ${Math.ceil(st.disabled)}s`;
+  }else if(flashT>0){
+    warnEl.style.display='block';
+    warnEl.textContent = '⚠ 事故:'+flashMsg;
+  }else if(tilt>32 && !st.air){
+    warnEl.style.display='block';
+    warnEl.textContent = `⚠ 姿态临界 ${tilt.toFixed(0)}°`;
+  }else{
+    warnEl.style.display='none';
   }
 }
 
 /* ================= 主循环 ================= */
 function updateRover(dt){
-  if(st.mode==='manual'){
-    const acc = 9;
-    let thrust = 0;
-    if(keys['w']||keys['arrowup']) thrust += 1;
-    if(keys['s']||keys['arrowdown']) thrust -= .6;
-    st.speed += thrust*acc*dt;
-    st.speed *= (1 - 2.2*dt);                    // 阻尼
-    st.speed = THREE.MathUtils.clamp(st.speed, -4.5, 8);
-    const turn = 1.5 * dt * (st.speed>=0?1:-1);
-    if(keys['a']||keys['arrowleft'])  st.heading += turn;
-    if(keys['d']||keys['arrowright']) st.heading -= turn;
-    if(keys['q']||holdUp)   st.mast=Math.min(1, st.mast+dt*.7);
-    if(keys['e']||holdDown) st.mast=Math.max(0, st.mast-dt*.7);
+  const groundH = terrainH(st.x,st.z);
+  /* ---- 离线重启 ---- */
+  if(st.disabled>0){
+    st.disabled -= dt;
+    st.speed *= (1-3*dt);
+    if(st.disabled<=0){
+      st.hull=45;
+      log('<span class="wr">远程重启完成 · 结构完整度恢复至 45%</span>');
+    }
   }else{
-    updateAuto(dt);
-    // 手动介入即退出自动
-    if(keys['w']||keys['a']||keys['s']||keys['d']){ toggleMode(); }
+    if(st.mode==='manual'){
+      let thrust = 0;
+      if(keys['w']||keys['arrowup']) thrust += 1;
+      if(keys['s']||keys['arrowdown']) thrust -= .6;
+      st.speed += thrust*(st.air?7:9)*dt;
+      st.speed *= (1 - (st.air? .35 : 2.2)*dt);   // 空中惯性大,地面阻尼大
+      st.speed = THREE.MathUtils.clamp(st.speed, st.air?-6:-4.5, st.air?12:8);
+      const turn = (st.air? .8 : 1.5) * dt * (st.speed>=0||st.air ? 1 : -1);
+      if(keys['a']||keys['arrowleft'])  st.heading += turn;
+      if(keys['d']||keys['arrowright']) st.heading -= turn;
+      if(keys['q']||holdUp)   st.mast=Math.min(1, st.mast+dt*.7);
+      if(keys['e']||holdDown) st.mast=Math.max(0, st.mast-dt*.7);
+      // 四台垂直涡轮:Shift 上升,C 主动下降
+      if((keys['shift']||holdFly) && st.fuel>0){
+        st.vy += 26*dt;
+        const before=st.fuel;
+        st.fuel = Math.max(0, st.fuel - dt*.22);
+        if(before>0 && st.fuel===0) log('<span class="wr">推进剂耗尽,注意坠落高度!</span>');
+      }
+      if(st.air && keys['c']) st.vy -= 9*dt;
+    }else{
+      updateAuto(dt);
+      // 手动介入即退出自动
+      if(keys['w']||keys['a']||keys['s']||keys['d']||keys['shift']){ toggleMode(); }
+    }
+    // 悬停怠速:燃料充足且未主动下降时,四涡轮限制下落速度(垂直软着陆)
+    if(st.air && st.fuel>0 && !keys['c'] && st.vy<-2.4){
+      st.vy = Math.min(-2.4, st.vy + 14*dt);
+      st.fuel = Math.max(0, st.fuel - dt*.04);
+    }
   }
-  // 位移
+  /* ---- 垂直物理:重力 / 起飞 / 着陆 ---- */
+  st.vy -= 11*dt;
+  st.y  += st.vy*dt;
+  if(st.y <= groundH){
+    if(st.air){
+      const impact = -st.vy;
+      if(impact>9)        accident('硬着陆冲击', Math.round(impact*2.2));
+      else if(impact>4.5) log('<span class="wr">着陆冲击 '+impact.toFixed(1)+' m/s</span>');
+      st.air=false;
+    }
+    st.y=groundH; st.vy=0;
+    st.fuel=Math.min(1, st.fuel + dt*.12);        // 地面缓慢补充推进剂
+  }else if(st.y > groundH+.3 && !st.air){
+    st.air=true;
+    log('四台垂直涡轮升空');
+  }
+  /* ---- 位移(无限地形,无边界) ---- */
   st.x += Math.sin(st.heading)*st.speed*dt;
   st.z += Math.cos(st.heading)*st.speed*dt;
-  const LIM = WORLD*.46;
-  st.x = THREE.MathUtils.clamp(st.x,-LIM,LIM);
-  st.z = THREE.MathUtils.clamp(st.z,-LIM,LIM);
 
-  // 贴地姿态
+  /* ---- 岩石实体碰撞(遍历已加载分块) ---- */
+  for(const ch of chunks.values()) for(const rk of ch.rocks){
+    const ddx=st.x-rk.x, ddz=st.z-rk.z, rr=rk.r+1.6;
+    const d2=ddx*ddx+ddz*ddz;
+    if(d2 < rr*rr && st.y < rk.top){              // 飞得够高可越过
+      const dd=Math.sqrt(d2)||.001, nx=ddx/dd, nz=ddz/dd;
+      const into = -(Math.sin(st.heading)*st.speed*nx + Math.cos(st.heading)*st.speed*nz);
+      st.x = rk.x + nx*rr;                        // 推出岩石
+      st.z = rk.z + nz*rr;
+      if(into>3.2 && st.clock-st.lastHit>1.2){
+        st.lastHit = st.clock;
+        accident('撞击岩石', Math.round(3+into*2.6));
+      }
+      st.speed *= .2;
+    }
+  }
+
+  /* ---- 姿态(陀螺仪数据源) ---- */
   const d=1.5, fx=Math.sin(st.heading), fz=Math.cos(st.heading), rx=fz, rz=-fx;
-  const hC=terrainH(st.x,st.z);
-  const hF=terrainH(st.x+fx*d, st.z+fz*d), hB=terrainH(st.x-fx*d, st.z-fz*d);
-  const hR=terrainH(st.x+rx*d, st.z+rz*d), hL=terrainH(st.x-rx*d, st.z-rz*d);
-  rover.position.set(st.x, hC, st.z);
+  let tp, tr;
+  if(st.air){
+    tp = THREE.MathUtils.clamp(-st.vy*.02, -.3, .3); tr = 0;   // 空中缓慢回平
+  }else{
+    const hF=terrainH(st.x+fx*d, st.z+fz*d), hB=terrainH(st.x-fx*d, st.z-fz*d);
+    const hR=terrainH(st.x+rx*d, st.z+rz*d), hL=terrainH(st.x-rx*d, st.z-rz*d);
+    tp = -Math.atan2(hF-hB, 2*d);
+    tr =  Math.atan2(hR-hL, 2*d);
+  }
+  const lk = Math.min(1, dt*9);
+  st.pitch += (tp-st.pitch)*lk;
+  st.roll  += (tr-st.roll)*lk;
+  rover.position.set(st.x, st.y, st.z);
   rover.rotation.order='YXZ';
   rover.rotation.y = st.heading;
-  rover.rotation.x = -Math.atan2(hF-hB, 2*d);
-  rover.rotation.z =  Math.atan2(hR-hL, 2*d);
+  rover.rotation.x = st.pitch;
+  rover.rotation.z = st.roll;
 
-  // 车轮 & 桅杆
-  rover.userData.wheels.forEach(w=>w.rotation.x += st.speed*dt/0.55);
+  /* ---- 倾覆监测 ---- */
+  const tilt = Math.max(Math.abs(st.pitch), Math.abs(st.roll)) * 57.29578;
+  if(!st.air && tilt>38 && st.disabled<=0) st.tiltT += dt;
+  else st.tiltT = Math.max(0, st.tiltT - dt*2);
+  if(st.tiltT>1.1){ st.tiltT=0; accident('坡面姿态倾覆', 22); }
+  updateWarn(tilt, dt);
+
+  // 车轮 & 桅杆 & 涡轮
+  if(!st.air) rover.userData.wheels.forEach(w=>w.rotation.x += st.speed*dt/0.55);
+  const liftOn = (keys['shift']||holdFly) && st.fuel>0 && st.disabled<=0;
+  const hoverOn = st.air && st.fuel>0 && st.disabled<=0;
+  const liftRate = liftOn?46 : hoverOn?22 : (st.disabled>0?0:3);
+  rover.userData.props.lift.forEach(p=>p.rotation.y += liftRate*dt);
+  rover.userData.props.rear.rotation.z += (Math.abs(st.speed)*2.5 + (st.air?10:0) + .5)*dt*4;
   const m = rover.userData.mast;
   const h = MAST_MIN + st.mast*(MAST_MAX-MAST_MIN);
   m.pole.scale.y = h; m.pole.position.y = h/2;
   m.head.position.y = h + .18;
-  m.lamp.material.color.setHex(st.scanning?0xffffff:0x41e8c8);
+  m.lamp.material.color.setHex(st.disabled>0?0xff5544 : st.scanning?0xffffff : 0x41e8c8);
 
-  // 扫描动画
+  // 扫描动画:扫掠线自车头向远端推进
   if(st.scanning){
     const s=st.scanning, t=(st.clock-s.t0)/s.dur;
-    if(t>=1){ finishScan(); beam.visible=false; }
+    if(t>=1){ finishScan(); sweep.visible=beam.visible=false; }
     else{
-      beam.visible=true;
-      const d2 = t*s.len;
-      const headPos = new THREE.Vector3();
-      m.head.getWorldPosition(headPos);
-      const p = beam.geometry.attributes.position;
-      p.setXYZ(0, headPos.x, headPos.y, headPos.z);
-      p.setXYZ(1, s.ox+s.dx*d2, terrainH(s.ox+s.dx*d2, s.oz+s.dz*d2)+.2, s.oz+s.dz*d2);
+      sweep.visible=beam.visible=true;
+      const v=t*s.len;
+      const p=sweep.geometry.attributes.position;
+      for(let i=0;i<SWEEP_N;i++){
+        const u=(i/(SWEEP_N-1)-.5)*s.wid;
+        const sx=s.ox+s.dx*v+s.rx*u, sz=s.oz+s.dz*v+s.rz*u;
+        p.setXYZ(i, sx, terrainH(sx,sz)+.25, sz);
+      }
       p.needsUpdate=true;
+      const hp = new THREE.Vector3();
+      m.head.getWorldPosition(hp);
+      const b=beam.geometry.attributes.position;
+      const cx=s.ox+s.dx*v, cz=s.oz+s.dz*v;
+      b.setXYZ(0, hp.x, hp.y, hp.z);
+      b.setXYZ(1, cx, terrainH(cx,cz)+.25, cz);
+      b.needsUpdate=true;
     }
   }
   // 扫描残留淡出
@@ -501,16 +849,38 @@ function updateRover(dt){
 }
 
 function updateCamera(dt){
-  const orbit = st.heading + Math.PI + camYaw;
-  const cd = camDist, cp = camPitch;
-  const tx = st.x + Math.sin(orbit)*Math.cos(cp)*cd;
-  const tz = st.z + Math.cos(orbit)*Math.cos(cp)*cd;
-  let ty = rover.position.y + Math.sin(cp)*cd + 1.5;
-  ty = Math.max(ty, terrainH(tx,tz)+1.8);
-  const k = 1-Math.pow(.001, dt);
-  camera.position.lerp(new THREE.Vector3(tx,ty,tz), k);
-  const look = new THREE.Vector3(st.x, rover.position.y+2.2, st.z);
-  camera.lookAt(look);
+  if(st.cam==='fpv'){
+    // 第一人称:挂在桅杆头前方,桅杆升得越高看得越远
+    rover.updateMatrixWorld(true);
+    const hp=new THREE.Vector3();
+    rover.userData.mast.head.getWorldPosition(hp);
+    const fwd=new THREE.Vector3(0,0,1).applyQuaternion(rover.quaternion);
+    camera.position.copy(hp).addScaledVector(fwd,.45);
+    camera.position.y += .06;
+    const yaw=st.heading+fpvYaw, cp=fpvPitch;
+    camera.lookAt(
+      camera.position.x+Math.sin(yaw)*Math.cos(cp),
+      camera.position.y+Math.sin(cp),
+      camera.position.z+Math.cos(yaw)*Math.cos(cp));
+  }else{
+    const orbit = st.heading + Math.PI + camYaw;
+    const cd = camDist, cp = camPitch;
+    const tx = st.x + Math.sin(orbit)*Math.cos(cp)*cd;
+    const tz = st.z + Math.cos(orbit)*Math.cos(cp)*cd;
+    let ty = rover.position.y + Math.sin(cp)*cd + 1.5;
+    ty = Math.max(ty, terrainH(tx,tz)+1.8);
+    const k = 1-Math.pow(.001, dt);
+    camera.position.lerp(new THREE.Vector3(tx,ty,tz), k);
+    const look = new THREE.Vector3(st.x, rover.position.y+2.2, st.z);
+    camera.lookAt(look);
+  }
+  if(st.shake>0){
+    camera.position.x += (Math.random()-.5)*st.shake;
+    camera.position.y += (Math.random()-.5)*st.shake;
+    camera.position.z += (Math.random()-.5)*st.shake;
+    st.shake *= Math.max(0, 1-5*dt);
+    if(st.shake<.01) st.shake=0;
+  }
 }
 
 /* ================= 终端绘制 ================= */
@@ -524,73 +894,95 @@ function fitCanvas(c){
 }
 
 const profileC = document.getElementById('profile');
-let lastProfile=null;
-function drawProfile(s, mn, mx){ lastProfile={s,mn,mx}; renderProfile(); }
+let lastScan=null;
 function renderProfile(){
   const [ctx,w,h] = fitCanvas(profileC);
   ctx.clearRect(0,0,w,h);
-  // 网格
+  // 背景网格
   ctx.strokeStyle='rgba(65,232,200,.07)'; ctx.lineWidth=1;
   for(let x=0;x<w;x+=26){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke(); }
   for(let y=0;y<h;y+=22){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke(); }
-  if(!lastProfile){
+  if(!lastScan){
     ctx.fillStyle='#3a4d55'; ctx.font='11px monospace'; ctx.textAlign='center';
-    ctx.fillText('—— 尚无剖面数据 · 按空格执行扫描 ——', w/2, h/2+4);
+    ctx.fillText('—— 尚无平面图数据 · 按空格执行区域扫描 ——', w/2, h/2+4);
     return;
   }
-  const {s,mn,mx}=lastProfile;
-  const pad=18, span=Math.max(mx-mn, 2);
-  const X = i => pad + (i/(s.samples.length-1))*(w-pad*2);
-  const Y = v => h-16 - ((v-mn)/span)*(h-38);
-  // 填充
-  ctx.beginPath(); ctx.moveTo(X(0), h-16);
-  for(let i=0;i<s.samples.length;i++) ctx.lineTo(X(i), Y(s.samples[i]));
-  ctx.lineTo(X(s.samples.length-1), h-16); ctx.closePath();
-  const g=ctx.createLinearGradient(0,0,0,h);
-  g.addColorStop(0,'rgba(65,232,200,.28)'); g.addColorStop(1,'rgba(65,232,200,.02)');
-  ctx.fillStyle=g; ctx.fill();
-  // 折线
+  const s=lastScan;
+  // 离屏像素图:行 0 = 远端,越高越深、越矮越浅
+  const off=document.createElement('canvas');
+  off.width=s.NX; off.height=s.NZ;
+  const ictx=off.getContext('2d'), img=ictx.createImageData(s.NX,s.NZ);
+  const span=Math.max(s.mx-s.mn, 1e-3);
+  const lo={r:0xd6,g:0xf3,b:0xea};      // 低处:浅
+  const hi={r:0x03,g:0x1a,b:0x15};      // 高处:深
+  for(let j=0;j<s.NZ;j++)for(let i=0;i<s.NX;i++){
+    const t=(s.heights[j*s.NX+i]-s.mn)/span;
+    const k=((s.NZ-1-j)*s.NX+i)*4;
+    img.data[k]  = lo.r+(hi.r-lo.r)*t;
+    img.data[k+1]= lo.g+(hi.g-lo.g)*t;
+    img.data[k+2]= lo.b+(hi.b-lo.b)*t;
+    img.data[k+3]= 255;
+  }
+  ictx.putImageData(img,0,0);
+  // 版面:左图右图例,按扫描区宽长比适配
+  const pad=8, legendW=42;
+  const availW=w-pad*2-legendW, availH=h-pad*2-12;
+  const ar=s.wid/s.len;
+  let dh=availH, dw=dh*ar;
+  if(dw>availW){ dw=availW; dh=dw/ar; }
+  const ox=pad+(availW-dw)/2, oy=pad+(availH-dh)/2;
+  ctx.imageSmoothingEnabled=true;
+  ctx.drawImage(off, ox, oy, dw, dh);
+  ctx.strokeStyle='rgba(65,232,200,.55)'; ctx.strokeRect(ox+.5,oy+.5,dw-1,dh-1);
+  // 车位标记(下边中点,朝上为车头方向)
+  ctx.fillStyle='#ffb454';
   ctx.beginPath();
-  for(let i=0;i<s.samples.length;i++) i?ctx.lineTo(X(i),Y(s.samples[i])):ctx.moveTo(X(0),Y(s.samples[0]));
-  ctx.strokeStyle='#41e8c8'; ctx.lineWidth=1.6; ctx.stroke();
-  // 车所在高程虚线
-  ctx.setLineDash([4,4]); ctx.strokeStyle='rgba(255,180,84,.7)'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(pad,Y(s.samples[0])); ctx.lineTo(w-pad,Y(s.samples[0])); ctx.stroke();
-  ctx.setLineDash([]);
-  // 标注
-  ctx.fillStyle='#5e7681'; ctx.font='10px monospace';
-  ctx.textAlign='left';  ctx.fillText('0m', pad, h-4);
-  ctx.textAlign='right'; ctx.fillText(s.len.toFixed(0)+'m', w-pad, h-4);
-  ctx.fillText(mx.toFixed(1), w-4, 12);
-  ctx.fillText(mn.toFixed(1), w-4, h-24);
+  ctx.moveTo(ox+dw/2, oy+dh-7);
+  ctx.lineTo(ox+dw/2-4, oy+dh); ctx.lineTo(ox+dw/2+4, oy+dh);
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#5e7681'; ctx.font='9px monospace'; ctx.textAlign='center';
+  ctx.fillText(s.len.toFixed(0)+'m ↑', ox+dw/2, Math.max(9,oy-2));
+  ctx.fillText(s.wid.toFixed(0)+'m', ox+dw/2, oy+dh+11);
+  // 图例:上深(高)下浅(低)
+  const lx=w-pad-legendW+14, ly=oy, lh=dh, lw=9;
+  const g=ctx.createLinearGradient(0,ly,0,ly+lh);
+  g.addColorStop(0,'rgb(3,26,21)'); g.addColorStop(1,'rgb(214,243,234)');
+  ctx.fillStyle=g; ctx.fillRect(lx,ly,lw,lh);
+  ctx.strokeStyle='#1c2a35'; ctx.strokeRect(lx+.5,ly+.5,lw-1,lh-1);
+  ctx.textAlign='left'; ctx.fillStyle='#5e7681';
+  ctx.fillText('高 '+s.mx.toFixed(1), lx+lw+3, ly+8);
+  ctx.fillText('低 '+s.mn.toFixed(1), lx+lw+3, ly+lh);
 }
 
-/* ---- 导航图 ---- */
+/* ---- 导航图(以巡视器为中心的滑动窗口) ---- */
 const navC = document.getElementById('navmap');
-let navBackdrop=null;
+const NAV_SPAN = 300;              // 窗口边长(米)
+let navBackdrop=null, navCenter={x:0,z:0};
 const navScans=[];
 function buildNavBackdrop(){
   const n=96, off=document.createElement('canvas');
   off.width=n; off.height=n;
+  navCenter={x:st.x, z:st.z};
   const ictx=off.getContext('2d'), img=ictx.createImageData(n,n);
   for(let j=0;j<n;j++)for(let i=0;i<n;i++){
-    const x=(i/(n-1)-.5)*WORLD, z=(j/(n-1)-.5)*WORLD;
-    const t=THREE.MathUtils.clamp((terrainH(x,z)+14)/40,0,1);
+    const x=navCenter.x+(i/(n-1)-.5)*NAV_SPAN, z=navCenter.z+(j/(n-1)-.5)*NAV_SPAN;
+    const t=THREE.MathUtils.clamp((terrainH(x,z)+22)/50,0,1);
     const k=(j*n+i)*4;
     img.data[k]=14+t*46; img.data[k+1]=22+t*40; img.data[k+2]=28+t*36; img.data[k+3]=255;
   }
   ictx.putImageData(img,0,0);
   navBackdrop=off;
-  navScans.length=0;
 }
 function renderNav(){
   const [ctx,w,h]=fitCanvas(navC);
   const S=Math.min(w,h);
   const ox=(w-S)/2, oy=(h-S)/2;
-  const M = (x,z)=>[ox+((x/WORLD)+.5)*S, oy+((z/WORLD)+.5)*S];
+  const M = (x,z)=>[ox+((x-navCenter.x)/NAV_SPAN+.5)*S, oy+((z-navCenter.z)/NAV_SPAN+.5)*S];
   ctx.clearRect(0,0,w,h);
   if(navBackdrop) ctx.drawImage(navBackdrop, ox,oy,S,S);
   ctx.strokeStyle='rgba(94,118,129,.5)'; ctx.strokeRect(ox+.5,oy+.5,S-1,S-1);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(ox,oy,S,S); ctx.clip();
   // 自动航线
   if(st.mode==='auto'&&st.auto.wps.length){
     ctx.strokeStyle='rgba(255,180,84,.35)'; ctx.setLineDash([3,3]); ctx.beginPath();
@@ -617,6 +1009,49 @@ function renderNav(){
   ctx.fillStyle='#fff';
   ctx.beginPath(); ctx.moveTo(0,-5); ctx.lineTo(3.6,4); ctx.lineTo(-3.6,4); ctx.closePath(); ctx.fill();
   ctx.restore();
+  ctx.restore();   // 结束窗口裁剪
+}
+
+/* ---- 陀螺仪(人工地平仪) ---- */
+const gyroC = document.getElementById('gyro');
+function renderGyro(){
+  const [ctx,w,h] = fitCanvas(gyroC);
+  const cx=w/2, cy=h/2, R=Math.min(w,h)/2-4;
+  ctx.clearRect(0,0,w,h);
+  const pitchDeg = -st.pitch*57.29578;          // 抬头为正
+  const tilt = Math.max(Math.abs(st.pitch),Math.abs(st.roll))*57.29578;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,7); ctx.clip();
+  ctx.translate(cx,cy); ctx.rotate(-st.roll);
+  const off = pitchDeg*1.5;
+  ctx.fillStyle='#101d2a'; ctx.fillRect(-R*2, -R*2, R*4, R*2+off);   // 天
+  ctx.fillStyle='#4a2b1e'; ctx.fillRect(-R*2, off,  R*4, R*2);       // 地
+  ctx.strokeStyle='rgba(207,227,232,.95)'; ctx.lineWidth=1.4;
+  ctx.beginPath(); ctx.moveTo(-R,off); ctx.lineTo(R,off); ctx.stroke();
+  ctx.strokeStyle='rgba(207,227,232,.4)'; ctx.lineWidth=1;
+  for(const p of [-30,-20,-10,10,20,30]){
+    const y=off+p*1.5, hw=p%20===0?15:8;
+    ctx.beginPath(); ctx.moveTo(-hw,y); ctx.lineTo(hw,y); ctx.stroke();
+  }
+  ctx.restore();
+  // 外圈:倾角临界时变红
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,7);
+  ctx.strokeStyle = tilt>32 ? '#ff6b5e' : 'rgba(94,118,129,.9)';
+  ctx.lineWidth=2; ctx.stroke();
+  // 固定机标(琥珀)
+  ctx.strokeStyle='#ffb454'; ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(cx-22,cy); ctx.lineTo(cx-8,cy); ctx.lineTo(cx-3,cy+5);
+  ctx.moveTo(cx+22,cy); ctx.lineTo(cx+8,cy); ctx.lineTo(cx+3,cy+5);
+  ctx.stroke();
+  ctx.fillStyle='#ffb454'; ctx.fillRect(cx-1.5,cy-1.5,3,3);
+  // 读数:航向 / 俯仰 / 横滚
+  const rollDeg = st.roll*57.29578;
+  const hdg = ((-st.heading*57.29578)%360+360)%360;
+  ctx.font='8px monospace'; ctx.textAlign='center';
+  ctx.fillStyle = tilt>32 ? '#ff6b5e' : '#8aa3ad';
+  ctx.fillText(`HDG ${String(hdg.toFixed(0)).padStart(3,'0')}°`, cx, cy+R-14);
+  ctx.fillText(`P${pitchDeg>=0?'+':''}${pitchDeg.toFixed(0)}  R${rollDeg>=0?'+':''}${rollDeg.toFixed(0)}`, cx, cy+R-5);
 }
 
 /* ---- 日志 & 遥测 ---- */
@@ -637,21 +1072,33 @@ function updateTele(dt){
   put('ty', rover.position.y.toFixed(1));
   let deg=(( -st.heading*180/Math.PI)%360+360)%360;
   put('th', deg.toFixed(0)); put('tv', Math.abs(st.speed).toFixed(1));
+  put('tf', st.laser? st.laser.t.toFixed(1) : '--');
+  put('tvl', st.vlaser.toFixed(1));
+  document.getElementById('fpvDist').textContent =
+    st.laser? `LASER ${st.laser.t.toFixed(1)}m · ${st.laser.kind==='rock'?'岩石':'地面'}` : 'LASER ∅';
   document.getElementById('mastFill').style.width=(st.mast*100).toFixed(0)+'%';
+  document.getElementById('fuelFill').style.width=(st.fuel*100).toFixed(0)+'%';
+  const hf=document.getElementById('hullFill');
+  hf.style.width=st.hull+'%';
+  hf.style.background = st.hull<35 ? 'linear-gradient(90deg,#7a2c22,#ff6b5e)' : '';
   document.getElementById('clock').textContent=tstr();
-  document.getElementById('navTag').textContent=`扫描点 ${navScans.length}`;
+  document.getElementById('navTag').textContent=`扫描点 ${navScans.length} · 窗口 ${NAV_SPAN}m`;
+  const ndx=st.x-navCenter.x, ndz=st.z-navCenter.z;
+  if(ndx*ndx+ndz*ndz > (NAV_SPAN*.22)**2) buildNavBackdrop();   // 滑动刷新底图
 }
 
 /* ================= 按钮 ================= */
-let holdUp=false, holdDown=false;
+let holdUp=false, holdDown=false, holdFly=false;
 const bind=(id,fn)=>document.getElementById(id).addEventListener('click',fn);
 bind('btnMode', toggleMode);
 bind('btnScan', ()=>startScan(true));
 bind('btnTerrain', ()=>{
   seed=(Math.random()*1e9)|0;
-  buildTerrain();
   st.x=0; st.z=0; st.speed=0; st.trail.length=0; st.auto.wps=[];
-  lastProfile=null; renderProfile();
+  st.y=terrainH(0,0); st.vy=0; st.air=false;
+  navScans.length=0;
+  resetWorld();
+  lastScan=null; renderProfile();
   document.getElementById('profTag').textContent='待回传';
   log('<span class="wr">地形已重新生成</span> · 噪声种子 #'+seed.toString(16).toUpperCase());
 });
@@ -660,12 +1107,15 @@ const hold=(id,set)=>{const b=document.getElementById(id);
   addEventListener('pointerup',()=>set(false));};
 hold('btnUp',  v=>holdUp=v);
 hold('btnDown',v=>holdDown=v);
+hold('btnFly', v=>holdFly=v);
 
 /* ================= 启动 ================= */
-buildTerrain();
+resetWorld();
+st.y = terrainH(0,0);
 syncModeUI();
-log('GEO-7 巡视器着陆完成,下行链路已建立');
-log('提示:桅杆升得越高,单次扫描射程越远');
+log('GEO-7 巡视器着陆完成,下行链路已建立 · 地形无限延伸');
+log('提示:Tab 切换第一/第三人称;红色为激光检测器;扫描回传区域高度平面图(深=高 浅=低)');
+log('自动巡查:激光测到地面距离 < 垂直测量数×'+LASER_K+' 或岩石时,将自动起飞沿航线飞越');
 
 addEventListener('resize', ()=>{ renderProfile(); });
 
@@ -674,6 +1124,7 @@ function frame(now){
   requestAnimationFrame(frame);
   const dt=Math.min((now-last)/1000,.05); last=now;
   st.clock+=dt;
+  ensureChunks(2);                 // 无限地形:每帧最多补建 2 块
   // 视口尺寸
   const vw=canvas.clientWidth, vh=canvas.clientHeight;
   const pr=renderer.getPixelRatio();
@@ -682,9 +1133,11 @@ function frame(now){
     camera.aspect=vw/vh; camera.updateProjectionMatrix();
   }
   updateRover(dt);
+  updateLaser();
   updateCamera(dt);
   updateTele(dt);
   renderNav();
+  renderGyro();
   renderer.render(scene,camera);
 }
 requestAnimationFrame(frame);
