@@ -2,611 +2,692 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>星球探测 - 核芯震魂</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-select=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GEO-7 巡视器 · 地形勘测任务</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Helvetica Neue',Helvetica,Arial,'Microsoft YaHei',sans-serif;background:#07080f;color:#c9d1d9;user-select:none;-webkit-user-select:none;}
-header{background:#326de6;color:#fff;padding:14px 0;text-align:center}
-header h1{font-size:1.45rem}
-header p{font-size:.82rem;opacity:.82;margin-top:3px}
-#wrap{max-width:760px;margin:16px auto;padding:0 12px 32px}
-#view-box{position:relative;width:100%;border-radius:10px;overflow:hidden;border:2px solid #326de6;background:#000;line-height:0;cursor:move;}
-#view{display:block;width:100%;height:auto;}
-#hud{position:absolute;inset:0;pointer-events:none;padding:12px 16px;display:flex;flex-direction:column;justify-content:space-between}
-.hud-row{display:flex;justify-content:space-between;align-items:flex-start}
-.hc{background:rgba(7,8,15,.82);border:1px solid rgba(50,109,230,.4);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);border-radius:6px;padding:6px 10px;font-family:monospace;font-size:.75rem;color:#89c4ff;line-height:1.7}
-.hc b{color:#fff}
-#cross{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:22px;height:22px;border:1.5px solid rgba(56,189,248,.6);border-radius:50%}
-#cross::before,#cross::after{content:'';position:absolute;background:rgba(56,189,248,.6)}
-#cross::before{width:8px;height:1.5px;top:50%;left:50%;transform:translate(-50%,-50%)}
-#cross::after{width:1.5px;height:8px;top:50%;left:50%;transform:translate(-50%,-50%)}
-#tmap-section{margin-top:10px;background:#000;border:1px solid #1a3a1a;border-radius:10px;overflow:hidden}
-#tmap-header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid #0d200d;background:#020802}
-#tmap-header span{font-family:monospace;font-size:.72rem;color:#39d353}
-.tbtn{padding:4px 12px;border-radius:4px;border:1px solid #1a4a1a;background:#061006;color:#39d353;font-family:monospace;font-size:.7rem;cursor:pointer;transition:all 0.2s;}
-.tbtn:hover{background:#0d2a0d;color:#fff;border-color:#39d353}
-#tmap-wrap{position:relative;overflow:hidden;cursor:grab;user-select:none}
-#tmap-wrap.dragging{cursor:grabbing}
-#tmap{display:block;width:100%}
-#tmap-hint{position:absolute;bottom:8px;right:10px;font-family:monospace;font-size:.65rem;color:#226e22;pointer-events:none}
-#log-strip{margin-top:8px;background:#020802;border:1px solid #0d200d;border-radius:8px;padding:10px 14px;font-family:Consolas,monospace;font-size:.72rem;color:#39d353;line-height:1.65;max-height:110px;overflow-y:auto}
-#log-strip .d{color:#1a4a1a}
-#log-strip .h{color:#7ee787;font-weight:bold}
-#log-strip .w{color:#e3b341}
-#ctrl-row{margin-top:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
-.cpad{background:#0d1117;border-radius:9px;padding:10px;border:1px solid #21262d}
-.cpad h4{font-size:.7rem;color:#777;margin-bottom:7px;text-transform:uppercase;letter-spacing:.05em}
-.pgrid{display:grid;grid-template-columns:repeat(3,40px);grid-template-rows:repeat(2,40px);gap:5px}
-.pbtn{background:#161b22;border:1.5px solid #30363d;border-radius:7px;color:#89aaff;font-size:.95rem;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;transition:background .1s}
-.pbtn:active,.pbtn.pressed{background:#326de6;border-color:#326de6;color:#fff}
-.pbtn.e{visibility:hidden}
-.vgrid{display:grid;grid-template-columns:90px;grid-template-rows:repeat(3,40px);gap:5px}
-.pbtn.wide{font-size:.72rem;letter-spacing:.04em}
-.ichips{flex:1;display:flex;flex-direction:column;gap:7px}
-.ic{background:#0d1117;border:1px solid #21262d;border-radius:7px;padding:8px 12px;font-size:.77rem;color:#8b949e;line-height:1.5}
-.ic b{color:#89c4ff}
-.arow{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
-.ab{padding:8px 16px;border-radius:6px;border:2px solid #326de6;background:#326de6;color:#fff;font-size:.86rem;font-weight:bold;cursor:pointer;transition:background .15s}
-.ab:hover{background:#2248b5;border-color:#2248b5}
-.ab.g{background:transparent;color:#326de6}
-.ab.g:hover{background:#326de6;color:#fff}
-hr{border:0;border-top:1px solid #21262d;margin-top:18px}
-.bk{display:inline-block;margin-top:12px;color:#326de6;text-decoration:none;font-weight:bold}
-.bk:hover{color:#89c4ff}
+  :root{
+    --bg:#07090c;
+    --panel:#0b1117;
+    --panel-2:#0e161e;
+    --line:#1c2a35;
+    --ink:#cfe3e8;
+    --dim:#5e7681;
+    --phos:#41e8c8;      /* 磷光青:数据/扫描 */
+    --amber:#ffb454;     /* 琥珀:遥测/警示 */
+    --rust:#c96f4a;      /* 地表锈红 */
+    --mono:ui-monospace,"SF Mono","Cascadia Mono",Consolas,"JetBrains Mono",monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--mono)}
+  #app{display:flex;height:100%}
+
+  /* ---------- 3D 视口 ---------- */
+  #viewport{position:relative;flex:1;min-width:0}
+  #gl{display:block;width:100%;height:100%}
+  .hud{position:absolute;pointer-events:none;font-size:12px;letter-spacing:.08em}
+  #modeChip{top:14px;left:14px;padding:6px 12px;border:1px solid var(--line);
+    background:rgba(7,9,12,.72);backdrop-filter:blur(4px);display:flex;gap:10px;align-items:center}
+  #modeChip .dot{width:8px;height:8px;border-radius:50%;background:var(--amber);box-shadow:0 0 8px var(--amber)}
+  #modeChip.auto .dot{background:var(--phos);box-shadow:0 0 8px var(--phos)}
+  #scanBanner{top:14px;left:50%;transform:translateX(-50%);padding:5px 14px;color:var(--phos);
+    border:1px solid rgba(65,232,200,.4);background:rgba(7,20,18,.75);display:none}
+  #keys{bottom:12px;left:14px;color:var(--dim);line-height:1.9;background:rgba(7,9,12,.55);padding:8px 12px;border:1px solid var(--line)}
+  #keys b{color:var(--ink);font-weight:600}
+
+  /* ---------- 2D 终端 ---------- */
+  #terminal{width:390px;flex:none;display:flex;flex-direction:column;background:var(--panel);
+    border-left:1px solid var(--line);position:relative;overflow:hidden}
+  /* CRT 扫描线纹理:终端的一点旧硬件质感 */
+  #terminal::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.14) 2px 3px)}
+  #terminal header{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  #terminal header h1{font-size:13px;font-weight:600;letter-spacing:.14em;color:var(--ink)}
+  #terminal header h1 small{display:block;color:var(--dim);font-weight:400;font-size:10px;margin-top:3px;letter-spacing:.2em}
+  #link{font-size:10px;color:var(--phos);letter-spacing:.1em;display:flex;align-items:center;gap:6px}
+  #link::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--phos);
+    box-shadow:0 0 8px var(--phos);animation:blink 2.4s infinite}
+  @keyframes blink{0%,88%{opacity:1}94%{opacity:.2}100%{opacity:1}}
+
+  .sec{border-bottom:1px solid var(--line);padding:10px 14px}
+  .sec .cap{font-size:10px;letter-spacing:.24em;color:var(--dim);margin-bottom:8px;display:flex;justify-content:space-between}
+  .cap span:last-child{color:var(--amber)}
+
+  #tele{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 12px}
+  .t label{display:block;font-size:9px;color:var(--dim);letter-spacing:.18em;margin-bottom:2px}
+  .t data{font-size:14px;color:var(--amber)}
+  .t data em{font-style:normal;font-size:10px;color:var(--dim);margin-left:2px}
+  #mastBar{grid-column:1/-1;height:8px;border:1px solid var(--line);background:var(--panel-2);position:relative}
+  #mastFill{position:absolute;inset:1px auto 1px 1px;width:20%;background:linear-gradient(90deg,#2a5e55,var(--phos));transition:width .1s}
+
+  canvas.term{display:block;width:100%;background:var(--panel-2);border:1px solid var(--line)}
+  #profile{height:130px}
+  #navmap{height:150px}
+
+  #logWrap{flex:1;min-height:60px;display:flex;flex-direction:column;padding:10px 14px 6px}
+  #log{flex:1;overflow-y:auto;font-size:11px;line-height:1.75;color:#9fc3c0;scrollbar-width:thin}
+  #log .t0{color:var(--dim)}
+  #log .pk{color:var(--phos)}
+  #log .wr{color:var(--amber)}
+  #log::-webkit-scrollbar{width:4px}
+  #log::-webkit-scrollbar-thumb{background:var(--line)}
+
+  #ctrls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:10px 14px 12px;border-top:1px solid var(--line)}
+  button{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink);cursor:pointer;
+    background:var(--panel-2);border:1px solid var(--line);padding:9px 4px;transition:border-color .15s,color .15s}
+  button:hover{border-color:var(--phos);color:var(--phos)}
+  button:focus-visible{outline:1px solid var(--phos);outline-offset:2px}
+  button.on{border-color:var(--phos);color:var(--phos);background:rgba(65,232,200,.08)}
+  #btnMode{grid-column:1/3}
+  #btnScan{color:var(--amber)}
+  #btnScan:hover{border-color:var(--amber)}
+
+  @media (max-width:900px){
+    #app{flex-direction:column}
+    #terminal{width:100%;height:46%;border-left:none;border-top:1px solid var(--line)}
+    #keys{display:none}
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>🛸 星球探测模拟器</h1>
-  <p>未知星球 · VL53L0X 高度传感 · HD体素渲染 · 自由3D全景终端</p>
-</header>
-<div id="wrap">
-
-  <div id="view-box">
-    <canvas id="view" width="1280" height="720"></canvas>
-    <div id="hud">
-      <div class="hud-row">
-        <div class="hc" id="hc-planet"><b>行星</b> ——<br><b>坐标</b> X:— Y:—</div>
-        <div class="hc" id="hc-alt"><b>高度</b> — m<br><b>地距</b> — m</div>
-      </div>
-      <div style="text-align:center;position:relative"><div id="cross"></div></div>
-      <div class="hud-row">
-        <div class="hc" id="hc-mode">待机</div>
-        <div class="hc" id="hc-spd">速度 0.0 m/s</div>
-      </div>
+<div id="app">
+  <div id="viewport">
+    <canvas id="gl"></canvas>
+    <div class="hud" id="modeChip"><span class="dot"></span><span id="modeTxt">手动模式 MANUAL</span></div>
+    <div class="hud" id="scanBanner">▚ 正在扫描地形剖面…</div>
+    <div class="hud" id="keys">
+      <b>W/S</b> 前进·后退 &nbsp; <b>A/D</b> 转向 &nbsp; <b>Q/E</b> 桅杆升降<br>
+      <b>空格</b> 扫描并回传 &nbsp; <b>M</b> 手动/自动 &nbsp; <b>拖拽/滚轮</b> 视角
     </div>
   </div>
 
-  <div id="tmap-section">
-    <div id="tmap-header">
-      <span id="tmap-title">📡 地形终端 · TERRAIN TERMINAL — 0 点</span>
-      <div style="display:flex;gap:6px">
-        <button class="tbtn" id="btn-follow">跟随 ON</button>
-        <button class="tbtn" id="btn-clearsv">清空</button>
+  <aside id="terminal">
+    <header>
+      <h1>GEO-7 巡视器<small>SURFACE SURVEY TERMINAL</small></h1>
+      <span id="link">下行链路</span>
+    </header>
+
+    <div class="sec">
+      <div class="cap"><span>遥测 TELEMETRY</span><span id="clock">T+00:00</span></div>
+      <div id="tele">
+        <div class="t"><label>坐标 X</label><data id="tx">0<em>m</em></data></div>
+        <div class="t"><label>坐标 Z</label><data id="tz">0<em>m</em></data></div>
+        <div class="t"><label>高程</label><data id="ty">0<em>m</em></data></div>
+        <div class="t"><label>航向</label><data id="th">0<em>°</em></data></div>
+        <div class="t"><label>速度</label><data id="tv">0.0<em>m/s</em></data></div>
+        <div class="t"><label>数据包</label><data id="tp">0</data></div>
+        <div id="mastBar" title="桅杆高度"><div id="mastFill"></div></div>
       </div>
     </div>
-    <div id="tmap-wrap">
-      <canvas id="tmap" width="700" height="350"></canvas>
-      <div id="tmap-hint">左键平移 · 右键/双指旋转 · 滚轮缩放</div>
-    </div>
-  </div>
 
-  <div id="log-strip"><span class="d">核芯震魂 探测终端 v4.0 HD — 等待启动...</span></div>
-
-  <div id="ctrl-row">
-    <div class="cpad">
-      <h4>推进</h4>
-      <div class="pgrid">
-        <div class="pbtn e"></div>
-        <div class="pbtn" data-key="w">▲ 前进</div>
-        <div class="pbtn e"></div>
-        <div class="pbtn e"></div>
-        <div class="pbtn" data-key="s">▼ 后退</div>
-        <div class="pbtn e"></div>
-      </div>
+    <div class="sec">
+      <div class="cap"><span>地形剖面 TERRAIN PROFILE</span><span id="profTag">待回传</span></div>
+      <canvas id="profile" class="term"></canvas>
     </div>
-    <div class="cpad">
-      <h4>升降</h4>
-      <div class="vgrid">
-        <div class="pbtn wide" data-key=" ">▲ 上升</div>
-        <div class="pbtn wide" id="btn-hover">— 悬停</div>
-        <div class="pbtn wide" data-key="z">▼ 下降</div>
-      </div>
-    </div>
-    <div class="ichips">
-      <div class="ic"><b>按住主画面左右滑动</b> 旋转视野 · <b>W/S</b> 前后平移移动</div>
-      <div class="ic"><b>3D终端控制</b>：鼠标左键拖动平移，<b>鼠标右键拖动（或触屏双指滑动）可360°旋转全景立体视角</b>。</div>
-    </div>
-  </div>
 
-  <div class="arow">
-    <button class="ab" id="btn-np">🌍 新星球</button>
-    <button class="ab g" id="btn-land">自动着陆</button>
-    <button class="ab g" id="btn-to">垂直起飞</button>
-  </div>
+    <div class="sec">
+      <div class="cap"><span>巡视地图 NAV</span><span id="navTag"></span></div>
+      <canvas id="navmap" class="term"></canvas>
+    </div>
 
-  <hr>
-  <a href="index.html" class="bk">← 返回主页</a>
+    <div id="logWrap">
+      <div class="cap"><span>数据链路 LOG</span></div>
+      <div id="log"></div>
+    </div>
+
+    <div id="ctrls">
+      <button id="btnMode">切换自动巡查 [M]</button>
+      <button id="btnScan">扫描 [空格]</button>
+      <button id="btnUp">桅杆升 [Q]</button>
+      <button id="btnDown">桅杆降 [E]</button>
+      <button id="btnTerrain">重生成地形</button>
+    </div>
+  </aside>
 </div>
 
 <script>
-(function () {
 'use strict';
-
-// 🌟 1. 画质大幅度提升：画布物理大小升级至 1280x720 超采样
-var VW = 1280, VH = 720;
-var MAP = 256, MASK = MAP - 1;
-var VSCALE = 320, FAR = 420, HSCALE = 0.45;
-
-var viewCanvas = document.getElementById('view');
-var vctx = viewCanvas.getContext('2d');
-var imgd = vctx.createImageData(VW, VH);
-var b32  = new Uint32Array(imgd.data.buffer);
-var yBuf = new Float32Array(VW);
-
-var tmapCanvas = document.getElementById('tmap');
-var tctx = tmapCanvas.getContext('2d');
-var TW = tmapCanvas.width, TH = tmapCanvas.height;
-
-function resizeTmap() {
-  var w = tmapCanvas.parentElement.clientWidth || 700;
-  if (w < 200) w = 700;
-  tmapCanvas.width = w;
-  TW = w;
+/* ================= 噪声地形 ================= */
+let seed = (Math.random()*1e9)|0;
+function hash(ix,iz){
+  let n = (ix*374761393 + iz*668265263 + seed*974711) | 0;
+  n = Math.imul(n ^ (n>>>13), 1274126177);
+  return ((n ^ (n>>>16)) >>> 0) / 4294967295;
 }
-resizeTmap();
-window.addEventListener('resize', resizeTmap);
-
-var hmap = new Uint8Array(MAP * MAP);
-var cmap = new Uint32Array(MAP * MAP);
-
-var cam = { x: 128, y: 128, z: 120, angle: 0, pitch: VH * 0.48 };
-var vz = 0, hoverLock = false, planet = null, keys = {};
-
-// 🌟 3. 自由视角全动态 3D 相机矩阵状态参数
-var tPan = { x: 0, y: 0, z: 0 }; 
-var tOrbit = { theta: 0.7, phi: 1.1, radius: 2.2 }; 
-var tFollow = true, termDirty = true;
-
-function lerp(a, b, t) { return a + (b - a) * t; }
-function smooth(t) { return t * t * (3 - 2 * t); }
-function hash2(xi, yi, seed) {
-  var n = Math.sin(xi * 127.1 + yi * 311.7 + seed * 74.3) * 43758.5453;
-  return n - Math.floor(n);
+const smooth = t => t*t*(3-2*t);
+function noise2(x,z){
+  const ix=Math.floor(x), iz=Math.floor(z), fx=x-ix, fz=z-iz;
+  const a=hash(ix,iz), b=hash(ix+1,iz), c=hash(ix,iz+1), d=hash(ix+1,iz+1);
+  const u=smooth(fx), v=smooth(fz);
+  return a*(1-u)*(1-v) + b*u*(1-v) + c*(1-u)*v + d*u*v;
 }
-function valueNoise(x, y, seed) {
-  var ix = Math.floor(x), iy = Math.floor(y);
-  var fx = smooth(x - ix), fy = smooth(y - iy);
-  return lerp(lerp(hash2(ix,iy,seed),hash2(ix+1,iy,seed),fx),
-              lerp(hash2(ix,iy+1,seed),hash2(ix+1,iy+1,seed),fx), fy);
+function fbm(x,z){
+  let f=0, amp=1, fr=1, tot=0;
+  for(let o=0;o<5;o++){ f += noise2(x*fr, z*fr)*amp; tot+=amp; amp*=.5; fr*=2.03; }
+  return f/tot;
 }
-function fbm(x, y, seed, oct) {
-  var v = 0, amp = 0.5, freq = 1;
-  for (var i = 0; i < oct; i++) {
-    v += valueNoise(x*freq, y*freq, seed+i*100) * amp;
-    amp *= 0.52; freq *= 2.1;
+const WORLD = 420;                 // 地形边长(米)
+function terrainH(x,z){            // 世界坐标 → 高程
+  const s = 0.011;
+  let h = fbm(x*s+37.2, z*s+91.7);
+  h = Math.pow(h, 1.35);
+  // 边缘抬升成环形山壁,把探测车留在盆地里
+  const r = Math.max(Math.abs(x), Math.abs(z)) / (WORLD/2);
+  const rim = Math.max(0, (r-0.82)/0.18);
+  return (h-0.42)*36 + rim*rim*30;
+}
+
+/* ================= 场景 ================= */
+const canvas = document.getElementById('gl');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1214);
+scene.fog = new THREE.Fog(0x2a1c19, 90, 380);
+const camera = new THREE.PerspectiveCamera(58, 2, .1, 900);
+
+scene.add(new THREE.HemisphereLight(0xd8b09a, 0x3a2420, .85));
+const sun = new THREE.DirectionalLight(0xffd9b0, 1.15);
+sun.position.set(-120, 160, 60);
+scene.add(sun);
+
+/* ---- 地形网格 ---- */
+let terrainMesh = null;
+function buildTerrain(){
+  if(terrainMesh){ scene.remove(terrainMesh); terrainMesh.geometry.dispose(); terrainMesh.material.dispose(); }
+  const seg = 170;
+  const geo = new THREE.PlaneGeometry(WORLD, WORLD, seg, seg);
+  geo.rotateX(-Math.PI/2);
+  const pos = geo.attributes.position;
+  const colors = new Float32Array(pos.count*3);
+  const cLow  = new THREE.Color(0x4f2c20);
+  const cMid  = new THREE.Color(0x9c5a3a);
+  const cHigh = new THREE.Color(0xd8a071);
+  const c = new THREE.Color();
+  for(let i=0;i<pos.count;i++){
+    const x=pos.getX(i), z=pos.getZ(i);
+    const h = terrainH(x,z);
+    pos.setY(i,h);
+    const t = THREE.MathUtils.clamp((h+14)/34, 0, 1);
+    if(t<.5) c.copy(cLow).lerp(cMid, t*2); else c.copy(cMid).lerp(cHigh,(t-.5)*2);
+    const dust = 0.9 + hash(i,i*7)*0.2;
+    colors[i*3]=c.r*dust; colors[i*3+1]=c.g*dust; colors[i*3+2]=c.b*dust;
   }
-  return v;
+  geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
+  geo.computeVertexNormals();
+  terrainMesh = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({vertexColors:true}));
+  scene.add(terrainMesh);
+  buildRocks();
+  buildNavBackdrop();
 }
 
-function packRGBA(r, g, b) {
-  r = r<0?0:r>255?255:r|0;
-  g = g<0?0:g>255?255:g|0;
-  b = b<0?0:b>255?255:b|0;
-  return (0xFF000000 | (b<<16) | (g<<8) | r) >>> 0;
-}
-
-var PLANET_DEFS = [
-  { id:'VOLCANIC', name:'火山星 IGNIS', skyT:[15,0,0], skyB:[75,22,0], fog:[100,30,5], stars:false, cf:function(h,n){ if(h<50)return packRGBA(210+n*12,70+n*20,n*4); var r=90+(h-50)*0.7+n*15; return packRGBA(r,r*0.28,n*5); }},
-  { id:'CRYSTAL', name:'晶体星 PRISMA', skyT:[5,0,22], skyB:[18,0,50], fog:[12,0,65], stars:true, cf:function(h,n){ var t=h/220; return packRGBA(lerp(20,100,t)+n*25,lerp(8,60,t)+n*8,lerp(100,235,t)+n*18); }},
-  { id:'ICE', name:'冰原星 GLACIUS', skyT:[5,10,26], skyB:[12,26,65], fog:[30,55,110], stars:true, cf:function(h,n){ var v=lerp(140,250,h/220)+n*10; return packRGBA(v*0.82,v*0.91,v); }},
-  { id:'DESERT', name:'沙漠星 SOLARA', skyT:[22,11,0], skyB:[65,32,5], fog:[140,82,26], stars:false, cf:function(h,n){ var t=h/220; return packRGBA(lerp(185,235,t)+n*12,lerp(105,165,t)+n*8,lerp(20,60,t)+n*5); }},
-  { id:'JUNGLE', name:'丛林星 VIRIDIS', skyT:[0,10,4], skyB:[0,26,10], fog:[0,40,15], stars:false, cf:function(h,n){ var t=h/220; return packRGBA(lerp(10,60,t)+n*8,lerp(60,165,t)+n*18,lerp(10,32,t)+n*5); }}
-];
-
-var STARS = [];
-for (var si = 0; si < 450; si++)
-  STARS.push({x:Math.random(), y:Math.random(), br:0.3+Math.random()*0.7});
-
-function genPlanet(typeIdx) {
-  if (typeIdx === undefined || typeIdx === null)
-    typeIdx = Math.floor(Math.random() * PLANET_DEFS.length);
-  planet = PLANET_DEFS[typeIdx];
-  var seed = Math.floor(Math.random() * 9999), inv = 1/MAP;
-  for (var py=0; py<MAP; py++) for (var px=0; px<MAP; px++) {
-    var h0 = fbm(px*inv*4, py*inv*4, seed, 6);
-    var h = (h0*1.85-0.1)*200+18;
-    h = h<0?0:h>255?255:h|0;
-    var n = valueNoise(px*inv*16, py*inv*16, seed+999)*28|0;
-    hmap[py*MAP+px] = h;
-    cmap[py*MAP+px] = planet.cf(h, n);
+/* ---- 散石 ---- */
+let rockGroup=null;
+function buildRocks(){
+  if(rockGroup){ scene.remove(rockGroup); }
+  rockGroup = new THREE.Group();
+  const g = new THREE.DodecahedronGeometry(1,0);
+  const m = new THREE.MeshLambertMaterial({color:0x6b4433});
+  for(let i=0;i<140;i++){
+    const x=(hash(i,3)-.5)*WORLD*.85, z=(hash(i,11)-.5)*WORLD*.85;
+    const s=.4+hash(i,29)*1.8;
+    const rock=new THREE.Mesh(g,m);
+    rock.position.set(x, terrainH(x,z)+s*.3, z);
+    rock.scale.set(s, s*(.6+hash(i,41)*.5), s);
+    rock.rotation.set(hash(i,5)*3, hash(i,7)*3, hash(i,13)*3);
+    rockGroup.add(rock);
   }
-  cam.x=MAP/2; cam.y=MAP/2; cam.z=120; cam.angle=0;
-  vz=0; hoverLock=false;
-  survey.length=0; lastSurveyMs=0;
-  tPan={x:0, y:0, z:0}; tOrbit={theta:0.6, phi:1.0, radius:2.5};
-  logLines=[];
-  tLog('[BOOT] '+planet.name+'  seed:'+seed.toString(16).toUpperCase());
-  tLog('[SYS]  VL53L0X 高清就绪  3D地形全景构建中...');
+  scene.add(rockGroup);
 }
 
-function terrainAt(x, y) { return hmap[((y|0)&MASK)*MAP+((x|0)&MASK)]; }
-function gDist() { return Math.max(0, (cam.z - terrainAt(cam.x,cam.y)) * HSCALE); }
-
-var survey=[], lastSurveyMs=0, SURVEY_MS=50, MAX_PTS=6000;
-
-function collectPoint() {
-  var now = Date.now();
-  if (now-lastSurveyMs < SURVEY_MS) return;
-  lastSurveyMs = now;
-  var dist=gDist(), roverZ=cam.z*HSCALE, groundZ=roverZ-dist;
-  survey.push({wx:cam.x, wy:cam.y, gz:groundZ, rz:roverZ});
-  if (survey.length>MAX_PTS) survey.shift();
-  termDirty = true;
-}
-
-// 🌟 渲染：高精度体素步进，dz更加精密
-function renderVoxel() {
-  var sinA=Math.sin(cam.angle), cosA=Math.cos(cam.angle);
-  var skyT=planet.skyT, skyB=planet.skyB, fog=planet.fog;
-  for (var sy=0; sy<VH; sy++) {
-    var t=sy/VH;
-    var sc=(0xFF000000|(lerp(skyT[2],skyB[2],t)|0)<<16|(lerp(skyT[1],skyB[1],t)|0)<<8|(lerp(skyT[0],skyB[0],t)|0))>>>0;
-    var row=sy*VW; for (var sx=0; sx<VW; sx++) b32[row+sx]=sc;
+/* ================= 探测车 ================= */
+const rover = new THREE.Group();
+scene.add(rover);
+{
+  const bodyMat = new THREE.MeshLambertMaterial({color:0xb9c2c9});
+  const darkMat = new THREE.MeshLambertMaterial({color:0x2b3238});
+  const goldMat = new THREE.MeshLambertMaterial({color:0xc9a24b});
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2.3,.75,3.3), bodyMat);
+  body.position.y = 1.05; rover.add(body);
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(2.0,.1,2.6), new THREE.MeshLambertMaterial({color:0x1d3550}));
+  deck.position.y = 1.48; rover.add(deck); // 太阳能板
+  const nose = new THREE.Mesh(new THREE.BoxGeometry(1.2,.5,.7), goldMat);
+  nose.position.set(0,.95,1.9); rover.add(nose);
+  // 六轮
+  const wg = new THREE.CylinderGeometry(.55,.55,.42,14);
+  wg.rotateZ(Math.PI/2);
+  rover.userData.wheels=[];
+  for(const sx of [-1.25,1.25]) for(const sz of [-1.3,0,1.3]){
+    const w = new THREE.Mesh(wg, darkMat);
+    w.position.set(sx,.55,sz);
+    const arm = new THREE.Mesh(new THREE.BoxGeometry(.12,.5,.12), bodyMat);
+    arm.position.set(sx,.9,sz);
+    rover.add(w, arm);
+    rover.userData.wheels.push(w);
   }
-  if (planet.stars) {
-    var horizon=cam.pitch|0;
-    for (var si2=0; si2<STARS.length; si2++) {
-      var st=STARS[si2], stx=(st.x*VW)|0, sty=(st.y*horizon*0.94)|0;
-      if (sty<0||sty>=VH) continue;
-      var sv=(st.br*210)|0;
-      b32[sty*VW+stx]=(0xFF000000|(sv<<16)|(sv<<8)|sv)>>>0;
+  // 可升降桅杆
+  const mast = new THREE.Group(); mast.position.set(.65,1.45,.9);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(.07,.09,1,10), bodyMat);
+  const head = new THREE.Group();
+  const hb = new THREE.Mesh(new THREE.BoxGeometry(.55,.32,.3), bodyMat);
+  const eyeL = new THREE.Mesh(new THREE.BoxGeometry(.12,.12,.06), darkMat);
+  const eyeR = eyeL.clone();
+  eyeL.position.set(-.14,.02,.17); eyeR.position.set(.14,.02,.17);
+  const lamp = new THREE.Mesh(new THREE.BoxGeometry(.5,.06,.26),
+        new THREE.MeshBasicMaterial({color:0x41e8c8}));
+  lamp.position.y=.22;
+  head.add(hb,eyeL,eyeR,lamp);
+  mast.add(pole, head);
+  rover.add(mast);
+  rover.userData.mast = {group:mast, pole, head, lamp};
+}
+const MAST_MIN=.55, MAST_MAX=2.6;
+
+/* ================= 状态 ================= */
+const st = {
+  x:0, z:0, heading:0, speed:0,
+  mast:.25,                    // 0..1
+  mode:'manual',               // manual | auto
+  auto:{phase:'drive', wpIdx:0, wps:[]},
+  scanning:null,               // {t0, dur, ox,oz,dx,dz,len,samples}
+  packets:0,
+  trail:[], trailT:0,
+  scanMarks:[],                // 3D 残留扫描线
+  clock:0,
+};
+const keys = {};
+addEventListener('keydown', e=>{
+  if(e.repeat) return;
+  const k = e.key.toLowerCase();
+  keys[k]=true;
+  if(k===' '){ e.preventDefault(); startScan(true); }
+  if(k==='m') toggleMode();
+});
+addEventListener('keyup', e=>keys[e.key.toLowerCase()]=false);
+
+/* ---- 相机轨道 ---- */
+let camYaw=0, camPitch=.42, camDist=13;
+let dragging=false, px=0, py=0;
+canvas.addEventListener('pointerdown', e=>{dragging=true;px=e.clientX;py=e.clientY;canvas.setPointerCapture(e.pointerId);});
+canvas.addEventListener('pointermove', e=>{
+  if(!dragging) return;
+  camYaw   -= (e.clientX-px)*.006;
+  camPitch  = THREE.MathUtils.clamp(camPitch+(e.clientY-py)*.005, .12, 1.25);
+  px=e.clientX; py=e.clientY;
+});
+canvas.addEventListener('pointerup', ()=>dragging=false);
+canvas.addEventListener('wheel', e=>{
+  camDist = THREE.MathUtils.clamp(camDist + e.deltaY*.01, 6.5, 26);
+}, {passive:true});
+
+/* ================= 扫描 ================= */
+const beamGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);
+const beam = new THREE.Line(beamGeo, new THREE.LineBasicMaterial({color:0x41e8c8,transparent:true,opacity:.9}));
+beam.visible=false; scene.add(beam);
+
+function scanLength(){ return 16 + st.mast*46; }   // 桅杆越高,看得越远
+
+function startScan(fromUser){
+  if(st.scanning) return;
+  const len = scanLength();
+  const dx=Math.sin(st.heading), dz=Math.cos(st.heading);
+  const N=72, samples=new Float32Array(N);
+  for(let i=0;i<N;i++){
+    const d = (i/(N-1))*len;
+    samples[i] = terrainH(st.x+dx*d, st.z+dz*d);
+  }
+  st.scanning = {t0:st.clock, dur:1.3, ox:st.x, oz:st.z, dx, dz, len, samples};
+  document.getElementById('scanBanner').style.display='block';
+  if(fromUser) log(`发起地形扫描 · 桅杆 ${(st.mast*100)|0}% · 射程 ${len.toFixed(0)}m`);
+}
+
+function finishScan(){
+  const s = st.scanning; st.scanning=null;
+  document.getElementById('scanBanner').style.display='none';
+  st.packets++;
+  // 3D 残留标记线
+  const pts=[]; const N=s.samples.length;
+  for(let i=0;i<N;i++){
+    const d=(i/(N-1))*s.len;
+    pts.push(new THREE.Vector3(s.ox+s.dx*d, s.samples[i]+.25, s.oz+s.dz*d));
+  }
+  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({color:0x41e8c8, transparent:true, opacity:.9}));
+  scene.add(line);
+  st.scanMarks.push({line, born:st.clock});
+  // 回传终端
+  const mn=Math.min(...s.samples), mx=Math.max(...s.samples);
+  drawProfile(s, mn, mx);
+  navScans.push({x:s.ox, z:s.oz});
+  const id = 'PKT-'+String(st.packets).padStart(3,'0');
+  document.getElementById('profTag').textContent = id;
+  document.getElementById('tp').textContent = st.packets;
+  log(`<span class="pk">${id}</span> 剖面回传 ${s.samples.length} 点 · ${s.len.toFixed(0)}m · 高差 ${(mx-mn).toFixed(1)}m`);
+}
+
+/* ================= 自动巡查 ================= */
+function genWaypoints(){
+  const wps=[]; const R=WORLD*.33;
+  const rows=4;
+  for(let r=0;r<rows;r++){
+    const z = -R + (2*R)*(r/(rows-1));
+    const xs = r%2 ? [R,-R] : [-R,R];
+    xs.forEach(x=>wps.push({x,z}));
+  }
+  return wps;
+}
+function toggleMode(){
+  if(st.mode==='manual'){
+    st.mode='auto';
+    st.auto={phase:'drive', wpIdx:nearestWp(), wps:st.auto.wps.length?st.auto.wps:genWaypoints()};
+    log('<span class="wr">已切换自动巡查</span> · 沿网格航线执行「行进 → 升杆 → 扫描 → 回传」');
+  }else{
+    st.mode='manual';
+    log('已切换手动遥控');
+  }
+  syncModeUI();
+}
+function nearestWp(){
+  const wps = st.auto.wps.length?st.auto.wps:genWaypoints();
+  st.auto.wps=wps;
+  let bi=0,bd=1e9;
+  wps.forEach((w,i)=>{const d=(w.x-st.x)**2+(w.z-st.z)**2; if(d<bd){bd=d;bi=i;}});
+  return bi;
+}
+function syncModeUI(){
+  const auto = st.mode==='auto';
+  document.getElementById('modeChip').classList.toggle('auto', auto);
+  document.getElementById('modeTxt').textContent = auto?'自动巡查 AUTO-SURVEY':'手动模式 MANUAL';
+  document.getElementById('btnMode').classList.toggle('on', auto);
+  document.getElementById('btnMode').textContent = auto?'返回手动遥控 [M]':'切换自动巡查 [M]';
+}
+
+function updateAuto(dt){
+  const a = st.auto;
+  const wp = a.wps[a.wpIdx];
+  if(a.phase==='drive'){
+    const ddx=wp.x-st.x, ddz=wp.z-st.z;
+    const dist=Math.hypot(ddx,ddz);
+    const want=Math.atan2(ddx,ddz);
+    let diff=want-st.heading;
+    while(diff> Math.PI) diff-=2*Math.PI;
+    while(diff<-Math.PI) diff+=2*Math.PI;
+    st.heading += THREE.MathUtils.clamp(diff, -1.1*dt, 1.1*dt);
+    const target = Math.abs(diff)>.6 ? 2.2 : 6.5;
+    st.speed += (target-st.speed)*dt*2;
+    if(dist<4){ st.speed*= .9; a.phase='raise'; log(`抵达航点 ${a.wpIdx+1}/${a.wps.length},升起桅杆`);}
+  }else if(a.phase==='raise'){
+    st.speed*= (1-3*dt);
+    st.mast = Math.min(1, st.mast + dt*.55);
+    if(st.mast>=1 && !st.scanning){ startScan(false); a.phase='scan'; }
+  }else if(a.phase==='scan'){
+    if(!st.scanning){ a.phase='lower'; }
+  }else if(a.phase==='lower'){
+    st.mast = Math.max(.3, st.mast - dt*.55);
+    if(st.mast<=.3){ a.wpIdx=(a.wpIdx+1)%a.wps.length; a.phase='drive'; }
+  }
+}
+
+/* ================= 主循环 ================= */
+function updateRover(dt){
+  if(st.mode==='manual'){
+    const acc = 9;
+    let thrust = 0;
+    if(keys['w']||keys['arrowup']) thrust += 1;
+    if(keys['s']||keys['arrowdown']) thrust -= .6;
+    st.speed += thrust*acc*dt;
+    st.speed *= (1 - 2.2*dt);                    // 阻尼
+    st.speed = THREE.MathUtils.clamp(st.speed, -4.5, 8);
+    const turn = 1.5 * dt * (st.speed>=0?1:-1);
+    if(keys['a']||keys['arrowleft'])  st.heading += turn;
+    if(keys['d']||keys['arrowright']) st.heading -= turn;
+    if(keys['q']||holdUp)   st.mast=Math.min(1, st.mast+dt*.7);
+    if(keys['e']||holdDown) st.mast=Math.max(0, st.mast-dt*.7);
+  }else{
+    updateAuto(dt);
+    // 手动介入即退出自动
+    if(keys['w']||keys['a']||keys['s']||keys['d']){ toggleMode(); }
+  }
+  // 位移
+  st.x += Math.sin(st.heading)*st.speed*dt;
+  st.z += Math.cos(st.heading)*st.speed*dt;
+  const LIM = WORLD*.46;
+  st.x = THREE.MathUtils.clamp(st.x,-LIM,LIM);
+  st.z = THREE.MathUtils.clamp(st.z,-LIM,LIM);
+
+  // 贴地姿态
+  const d=1.5, fx=Math.sin(st.heading), fz=Math.cos(st.heading), rx=fz, rz=-fx;
+  const hC=terrainH(st.x,st.z);
+  const hF=terrainH(st.x+fx*d, st.z+fz*d), hB=terrainH(st.x-fx*d, st.z-fz*d);
+  const hR=terrainH(st.x+rx*d, st.z+rz*d), hL=terrainH(st.x-rx*d, st.z-rz*d);
+  rover.position.set(st.x, hC, st.z);
+  rover.rotation.order='YXZ';
+  rover.rotation.y = st.heading;
+  rover.rotation.x = -Math.atan2(hF-hB, 2*d);
+  rover.rotation.z =  Math.atan2(hR-hL, 2*d);
+
+  // 车轮 & 桅杆
+  rover.userData.wheels.forEach(w=>w.rotation.x += st.speed*dt/0.55);
+  const m = rover.userData.mast;
+  const h = MAST_MIN + st.mast*(MAST_MAX-MAST_MIN);
+  m.pole.scale.y = h; m.pole.position.y = h/2;
+  m.head.position.y = h + .18;
+  m.lamp.material.color.setHex(st.scanning?0xffffff:0x41e8c8);
+
+  // 扫描动画
+  if(st.scanning){
+    const s=st.scanning, t=(st.clock-s.t0)/s.dur;
+    if(t>=1){ finishScan(); beam.visible=false; }
+    else{
+      beam.visible=true;
+      const d2 = t*s.len;
+      const headPos = new THREE.Vector3();
+      m.head.getWorldPosition(headPos);
+      const p = beam.geometry.attributes.position;
+      p.setXYZ(0, headPos.x, headPos.y, headPos.z);
+      p.setXYZ(1, s.ox+s.dx*d2, terrainH(s.ox+s.dx*d2, s.oz+s.dz*d2)+.2, s.oz+s.dz*d2);
+      p.needsUpdate=true;
     }
   }
-  yBuf.fill(VH);
-  var dz=0.8; // 提升步进速度增加前视解析度
-  for (var z=1; z<FAR; z+=dz) {
-    var plx=-cosA*z-sinA*z, ply=sinA*z-cosA*z;
-    var prx=cosA*z-sinA*z,  pry=-sinA*z-cosA*z;
-    var dx=(prx-plx)/VW, dy=(pry-ply)/VW;
-    var rx=cam.x+plx, ry=cam.y+ply;
-    var invz=VSCALE/z, fogT=(z/FAR)*(z/FAR); if(fogT>1)fogT=1;
-    for (var col=0; col<VW; col++) {
-      var idx=((ry|0)&MASK)*MAP+((rx|0)&MASK);
-      var projY=((cam.z-hmap[idx])*invz+cam.pitch)|0;
-      if (projY<yBuf[col]) {
-        var tc=cmap[idx];
-        var fc=(0xFF000000|(lerp((tc>>>16)&0xFF,fog[2],fogT)|0)<<16|(lerp((tc>>>8) &0xFF,fog[1],fogT)|0)<<8|(lerp(tc&0xFF,fog[0],fogT)|0))>>>0;
-        var top=projY<0?0:projY, bot=yBuf[col]>VH?VH:yBuf[col]|0;
-        for (var row2=top; row2<bot; row2++) b32[row2*VW+col]=fc;
-        yBuf[col]=projY;
-      }
-      rx+=dx; ry+=dy;
-    }
-    dz+=0.003;
+  // 扫描残留淡出
+  for(let i=st.scanMarks.length-1;i>=0;i--){
+    const mk=st.scanMarks[i], age=st.clock-mk.born;
+    mk.line.material.opacity = Math.max(0, .9 - age/8);
+    if(age>8){ scene.remove(mk.line); mk.line.geometry.dispose(); st.scanMarks.splice(i,1); }
   }
-  vctx.putImageData(imgd,0,0);
+  // 轨迹
+  st.trailT += dt;
+  if(st.trailT>.4){ st.trailT=0; st.trail.push([st.x,st.z]); if(st.trail.length>600) st.trail.shift(); }
 }
 
-// 🌟 3. 自由3D视角投射算法矩阵 (全方向旋转支持)
-function proj3D(wx, wy, wz) {
-  var dx = wx - tPan.x;
-  var dy = wy - tPan.y;
-  var dz = wz - tPan.z;
-
-  var cosT = Math.cos(tOrbit.theta), sinT = Math.sin(tOrbit.theta);
-  var cosP = Math.cos(tOrbit.phi),   sinP = Math.sin(tOrbit.phi);
-
-  // 核心旋转变换
-  var x1 = cosT * dx + sinT * dy;
-  var y1 = -sinT * dx + cosT * dy;
-  
-  var camX = cosP * x1 - sinP * dz;
-  var camZ = sinP * x1 + cosP * dz;
-  var camY = y1;
-
-  var f = 400 / (tOrbit.radius * 200 + camZ);
-  return {
-    sx: TW / 2 + camX * f * 30,
-    sy: TH / 2 - camY * f * 30
-  };
+function updateCamera(dt){
+  const orbit = st.heading + Math.PI + camYaw;
+  const cd = camDist, cp = camPitch;
+  const tx = st.x + Math.sin(orbit)*Math.cos(cp)*cd;
+  const tz = st.z + Math.cos(orbit)*Math.cos(cp)*cd;
+  let ty = rover.position.y + Math.sin(cp)*cd + 1.5;
+  ty = Math.max(ty, terrainH(tx,tz)+1.8);
+  const k = 1-Math.pow(.001, dt);
+  camera.position.lerp(new THREE.Vector3(tx,ty,tz), k);
+  const look = new THREE.Vector3(st.x, rover.position.y+2.2, st.z);
+  camera.lookAt(look);
 }
 
-var termFrame=0;
-function renderTerminal() {
-  termFrame++;
-  if (!termDirty && termFrame%2!==0) return;
-  termDirty=false;
-  tctx.fillStyle='#010502'; tctx.fillRect(0,0,TW,TH);
-  
-  if (survey.length<2) {
-    tctx.fillStyle='#1a4a1a'; tctx.font='13px monospace'; tctx.textAlign='center';
-    tctx.fillText('📡 TERRAIN TERMINAL — 等待传感器数据...',TW/2,TH/2);
-    tctx.textAlign='left'; return;
-  }
-  
-  if (tFollow) {
-    var lastPt = survey[survey.length-1];
-    tPan.x += (lastPt.wx - tPan.x) * 0.1;
-    tPan.y += (lastPt.wy - tPan.y) * 0.1;
-    tPan.z += (lastPt.gz - tPan.z) * 0.1;
-  }
-
-  var N=survey.length, minGz=Infinity, maxGz=-Infinity;
-  for (var ki=0; ki<N; ki++){if(survey[ki].gz<minGz)minGz=survey[ki].gz;if(survey[ki].gz>maxGz)maxGz=survey[ki].gz;}
-  var rangeGz=maxGz-minGz; if(rangeGz<1)rangeGz=1;
-  
-  // 绘制 3D 探测连线
-  tctx.lineWidth=2; tctx.lineJoin='round';
-  for (var i=1; i<N; i++) {
-    var pa=proj3D(survey[i-1].wx,survey[i-1].wy,survey[i-1].gz);
-    var pb=proj3D(survey[i].wx,survey[i].wy,survey[i].gz);
-    if(pa.sx<-100||pa.sx>TW+100||pa.sy<-100||pa.sy>TH+100) continue;
-    var t2=(survey[i].gz-minGz)/rangeGz;
-    tctx.strokeStyle='rgb('+(lerp(0,50,t2)|0)+','+(lerp(140,255,t2)|0)+','+(lerp(50,140,t2)|0)+')';
-    tctx.beginPath(); tctx.moveTo(pa.sx,pa.sy); tctx.lineTo(pb.sx,pb.sy); tctx.stroke();
-  }
-  
-  // 绘制3D轨迹星空高度指示虚线
-  tctx.strokeStyle='rgba(56,189,248,0.4)'; tctx.lineWidth=1; tctx.setLineDash([2,3]);
-  tctx.beginPath(); var altStarted=false;
-  for (var j=0; j<N; j++) {
-    var pp=proj3D(survey[j].wx,survey[j].wy,survey[j].rz);
-    if(pp.sx<-100||pp.sx>TW+100||pp.sy<-100||pp.sy>TH+100){altStarted=false;continue;}
-    if(!altStarted){tctx.moveTo(pp.sx,pp.sy);altStarted=true;} else tctx.lineTo(pp.sx,pp.sy);
-  }
-  tctx.stroke(); tctx.setLineDash([]);
-
-  var last=survey[N-1], lp=proj3D(last.wx,last.wy,last.gz);
-  tctx.fillStyle='#fff'; tctx.beginPath(); tctx.arc(lp.sx,lp.sy,5,0,Math.PI*2); tctx.fill();
-  
-  var pulse=(Date.now()%1000)/1000;
-  tctx.strokeStyle='rgba(57,211,83,'+(1-pulse)+')'; tctx.lineWidth=2;
-  tctx.beginPath(); tctx.arc(lp.sx,lp.sy,5+pulse*18,0,Math.PI*2); tctx.stroke();
-
-  tctx.fillStyle='#39d353'; tctx.font='11px monospace';
-  document.getElementById('tmap-title').textContent = '📡 地形终端 · 全景空间三维网络 — '+N+' 采样点';
+/* ================= 终端绘制 ================= */
+function fitCanvas(c){
+  const dpr = Math.min(devicePixelRatio,2);
+  const w = c.clientWidth, h = c.clientHeight;
+  if(c.width!==w*dpr||c.height!==h*dpr){ c.width=w*dpr; c.height=h*dpr; }
+  const ctx=c.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return [ctx,w,h];
 }
 
-function updateHUD() {
-  var dist=gDist(), alt=(cam.z*HSCALE).toFixed(1);
-  document.getElementById('hc-planet').innerHTML='<b>'+planet.name+'</b><br><b>坐标</b> X:'+String(cam.x|0).padStart(3,'0')+' Y:'+String(cam.y|0).padStart(3,'0');
-  document.getElementById('hc-alt').innerHTML='<b>高度</b> '+alt+' m<br><b>地距</b> '+dist.toFixed(1)+' m';
-  var mode=dist<1.5?'🟢 已着陆':dist<5?'🟡 低空':dist<50?'🔵 扫描':'🟣 巡航';
-  if(hoverLock)mode='⚪ 悬停';
-  document.getElementById('hc-mode').textContent=mode;
-  document.getElementById('hc-spd').textContent='速度 '+(Math.abs(vz)*2).toFixed(1)+' m/s';
-  
-  if (Date.now()%2000<16) tLog('[VL53L0X] 激光反馈地距:'+dist.toFixed(3)+'m  当前高度轴:'+alt+'m');
+const profileC = document.getElementById('profile');
+let lastProfile=null;
+function drawProfile(s, mn, mx){ lastProfile={s,mn,mx}; renderProfile(); }
+function renderProfile(){
+  const [ctx,w,h] = fitCanvas(profileC);
+  ctx.clearRect(0,0,w,h);
+  // 网格
+  ctx.strokeStyle='rgba(65,232,200,.07)'; ctx.lineWidth=1;
+  for(let x=0;x<w;x+=26){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke(); }
+  for(let y=0;y<h;y+=22){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke(); }
+  if(!lastProfile){
+    ctx.fillStyle='#3a4d55'; ctx.font='11px monospace'; ctx.textAlign='center';
+    ctx.fillText('—— 尚无剖面数据 · 按空格执行扫描 ——', w/2, h/2+4);
+    return;
+  }
+  const {s,mn,mx}=lastProfile;
+  const pad=18, span=Math.max(mx-mn, 2);
+  const X = i => pad + (i/(s.samples.length-1))*(w-pad*2);
+  const Y = v => h-16 - ((v-mn)/span)*(h-38);
+  // 填充
+  ctx.beginPath(); ctx.moveTo(X(0), h-16);
+  for(let i=0;i<s.samples.length;i++) ctx.lineTo(X(i), Y(s.samples[i]));
+  ctx.lineTo(X(s.samples.length-1), h-16); ctx.closePath();
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,'rgba(65,232,200,.28)'); g.addColorStop(1,'rgba(65,232,200,.02)');
+  ctx.fillStyle=g; ctx.fill();
+  // 折线
+  ctx.beginPath();
+  for(let i=0;i<s.samples.length;i++) i?ctx.lineTo(X(i),Y(s.samples[i])):ctx.moveTo(X(0),Y(s.samples[0]));
+  ctx.strokeStyle='#41e8c8'; ctx.lineWidth=1.6; ctx.stroke();
+  // 车所在高程虚线
+  ctx.setLineDash([4,4]); ctx.strokeStyle='rgba(255,180,84,.7)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(pad,Y(s.samples[0])); ctx.lineTo(w-pad,Y(s.samples[0])); ctx.stroke();
+  ctx.setLineDash([]);
+  // 标注
+  ctx.fillStyle='#5e7681'; ctx.font='10px monospace';
+  ctx.textAlign='left';  ctx.fillText('0m', pad, h-4);
+  ctx.textAlign='right'; ctx.fillText(s.len.toFixed(0)+'m', w-pad, h-4);
+  ctx.fillText(mx.toFixed(1), w-4, 12);
+  ctx.fillText(mn.toFixed(1), w-4, h-24);
 }
 
-var logLines=[];
-function tLog(msg) {
-  logLines.push(msg); if(logLines.length>40)logLines.shift();
-  var el=document.getElementById('log-strip');
-  el.innerHTML=logLines.map(function(l,i){
-    if(l.indexOf('[LAND]')===0||l.indexOf('[TAKE]')===0)return'<span class="h">'+l+'</span>';
-    if(l.indexOf('[WARN]')===0)return'<span class="w">'+l+'</span>';
-    if(i<logLines.length-1)return'<span class="d">'+l+'</span>';
-    return l;
-  }).join('<br>');
-  el.scrollTop=el.scrollHeight;
+/* ---- 导航图 ---- */
+const navC = document.getElementById('navmap');
+let navBackdrop=null;
+const navScans=[];
+function buildNavBackdrop(){
+  const n=96, off=document.createElement('canvas');
+  off.width=n; off.height=n;
+  const ictx=off.getContext('2d'), img=ictx.createImageData(n,n);
+  for(let j=0;j<n;j++)for(let i=0;i<n;i++){
+    const x=(i/(n-1)-.5)*WORLD, z=(j/(n-1)-.5)*WORLD;
+    const t=THREE.MathUtils.clamp((terrainH(x,z)+14)/40,0,1);
+    const k=(j*n+i)*4;
+    img.data[k]=14+t*46; img.data[k+1]=22+t*40; img.data[k+2]=28+t*36; img.data[k+3]=255;
+  }
+  ictx.putImageData(img,0,0);
+  navBackdrop=off;
+  navScans.length=0;
+}
+function renderNav(){
+  const [ctx,w,h]=fitCanvas(navC);
+  const S=Math.min(w,h);
+  const ox=(w-S)/2, oy=(h-S)/2;
+  const M = (x,z)=>[ox+((x/WORLD)+.5)*S, oy+((z/WORLD)+.5)*S];
+  ctx.clearRect(0,0,w,h);
+  if(navBackdrop) ctx.drawImage(navBackdrop, ox,oy,S,S);
+  ctx.strokeStyle='rgba(94,118,129,.5)'; ctx.strokeRect(ox+.5,oy+.5,S-1,S-1);
+  // 自动航线
+  if(st.mode==='auto'&&st.auto.wps.length){
+    ctx.strokeStyle='rgba(255,180,84,.35)'; ctx.setLineDash([3,3]); ctx.beginPath();
+    st.auto.wps.forEach((p,i)=>{const [a,b]=M(p.x,p.z); i?ctx.lineTo(a,b):ctx.moveTo(a,b);});
+    ctx.stroke(); ctx.setLineDash([]);
+    st.auto.wps.forEach((p,i)=>{
+      const [a,b]=M(p.x,p.z);
+      ctx.fillStyle=i===st.auto.wpIdx?'#ffb454':'rgba(255,180,84,.5)';
+      ctx.fillRect(a-2,b-2,4,4);
+    });
+  }
+  // 轨迹
+  if(st.trail.length>1){
+    ctx.strokeStyle='rgba(255,180,84,.8)'; ctx.lineWidth=1; ctx.beginPath();
+    st.trail.forEach((p,i)=>{const [a,b]=M(p[0],p[1]); i?ctx.lineTo(a,b):ctx.moveTo(a,b);});
+    ctx.stroke();
+  }
+  // 扫描点
+  ctx.fillStyle='#41e8c8';
+  navScans.forEach(p=>{const [a,b]=M(p.x,p.z); ctx.beginPath();ctx.arc(a,b,2.2,0,7);ctx.fill();});
+  // 车
+  const [cx,cy]=M(st.x,st.z);
+  ctx.save(); ctx.translate(cx,cy); ctx.rotate(Math.PI - st.heading);
+  ctx.fillStyle='#fff';
+  ctx.beginPath(); ctx.moveTo(0,-5); ctx.lineTo(3.6,4); ctx.lineTo(-3.6,4); ctx.closePath(); ctx.fill();
+  ctx.restore();
 }
 
-var MOVE=0.9, THRUST=0.24, DRAG=0.87;
-function update() {
-  if(!planet)return;
-  var s=Math.sin(cam.angle), c=Math.cos(cam.angle);
-  if(keys['w']||keys['W']||keys['ArrowUp'])   {cam.x+=c*MOVE;cam.y+=s*MOVE; termDirty=true;}
-  if(keys['s']||keys['S']||keys['ArrowDown']) {cam.x-=c*MOVE;cam.y-=s*MOVE; termDirty=true;}
-  cam.x=(cam.x+MAP)%MAP; cam.y=(cam.y+MAP)%MAP;
-  if(!hoverLock){
-    if(keys[' '])             vz+=THRUST;
-    if(keys['z']||keys['Z']) vz-=THRUST;
-    vz*=DRAG; cam.z+=vz;
-  } else {
-    vz=0;
-    if(keys[' '])             {hoverLock=false;vz+=THRUST;}
-    if(keys['z']||keys['Z']) {hoverLock=false;vz-=THRUST;}
-  }
-  var minZ=terrainAt(cam.x,cam.y)+4;
-  if(cam.z<minZ){cam.z=minZ;if(vz<0)vz=0;}
-  if(cam.z>620){cam.z=620;vz=0;}
+/* ---- 日志 & 遥测 ---- */
+const logEl=document.getElementById('log');
+function tstr(){ const s=st.clock|0; return `T+${String((s/60)|0).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
+function log(html){
+  const div=document.createElement('div');
+  div.innerHTML=`<span class="t0">[${tstr()}]</span> ${html}`;
+  logEl.appendChild(div);
+  while(logEl.children.length>60) logEl.removeChild(logEl.firstChild);
+  logEl.scrollTop=logEl.scrollHeight;
+}
+let teleT=0;
+function updateTele(dt){
+  teleT+=dt; if(teleT<.15) return; teleT=0;
+  const put=(id,v)=>document.getElementById(id).firstChild.nodeValue=v;
+  put('tx', st.x.toFixed(0)); put('tz', st.z.toFixed(0));
+  put('ty', rover.position.y.toFixed(1));
+  let deg=(( -st.heading*180/Math.PI)%360+360)%360;
+  put('th', deg.toFixed(0)); put('tv', Math.abs(st.speed).toFixed(1));
+  document.getElementById('mastFill').style.width=(st.mast*100).toFixed(0)+'%';
+  document.getElementById('clock').textContent=tstr();
+  document.getElementById('navTag').textContent=`扫描点 ${navScans.length}`;
 }
 
-var autoCmd=null;
-function doAutoLand()   {autoCmd='land';hoverLock=false;tLog('[LAND] 自动着陆开启...');}
-function doAutoTakeoff(){autoCmd='to';  hoverLock=false;tLog('[TAKE] 垂直起飞中...');}
-function runAuto() {
-  if(!autoCmd)return;
-  var d=gDist();
-  if(autoCmd==='land'){
-    if(d>1.5){vz-=0.16;if(vz<-3)vz=-3;}
-    else{vz=0;hoverLock=true;autoCmd=null;tLog('[LAND] ✓ 已安全平稳着陆');}
-  } else {
-    var target=terrainAt(cam.x,cam.y)+80;
-    if(cam.z<target){vz+=0.20;if(vz>4)vz=4;}
-    else{hoverLock=true;autoCmd=null;tLog('[TAKE] ✓ 已上升到预定高度悬停');}
+/* ================= 按钮 ================= */
+let holdUp=false, holdDown=false;
+const bind=(id,fn)=>document.getElementById(id).addEventListener('click',fn);
+bind('btnMode', toggleMode);
+bind('btnScan', ()=>startScan(true));
+bind('btnTerrain', ()=>{
+  seed=(Math.random()*1e9)|0;
+  buildTerrain();
+  st.x=0; st.z=0; st.speed=0; st.trail.length=0; st.auto.wps=[];
+  lastProfile=null; renderProfile();
+  document.getElementById('profTag').textContent='待回传';
+  log('<span class="wr">地形已重新生成</span> · 噪声种子 #'+seed.toString(16).toUpperCase());
+});
+const hold=(id,set)=>{const b=document.getElementById(id);
+  b.addEventListener('pointerdown',()=>set(true));
+  addEventListener('pointerup',()=>set(false));};
+hold('btnUp',  v=>holdUp=v);
+hold('btnDown',v=>holdDown=v);
+
+/* ================= 启动 ================= */
+buildTerrain();
+syncModeUI();
+log('GEO-7 巡视器着陆完成,下行链路已建立');
+log('提示:桅杆升得越高,单次扫描射程越远');
+
+addEventListener('resize', ()=>{ renderProfile(); });
+
+let last=performance.now();
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min((now-last)/1000,.05); last=now;
+  st.clock+=dt;
+  // 视口尺寸
+  const vw=canvas.clientWidth, vh=canvas.clientHeight;
+  const pr=renderer.getPixelRatio();
+  if(canvas.width!==(vw*pr|0) || canvas.height!==(vh*pr|0)){
+    renderer.setSize(vw,vh,false);
+    camera.aspect=vw/vh; camera.updateProjectionMatrix();
   }
+  updateRover(dt);
+  updateCamera(dt);
+  updateTele(dt);
+  renderNav();
+  renderer.render(scene,camera);
 }
-
-function loop() {
-  update(); runAuto(); collectPoint();
-  renderVoxel(); renderTerminal(); updateHUD();
-  requestAnimationFrame(loop);
-}
-
-// 🌟 2. 核心调整：AD转向去除，改为针对主画面的滑屏/拖拽操作
-var isViewDragging = false;
-var lastViewX = 0;
-var viewBox = document.getElementById('view-box');
-
-viewBox.addEventListener('mousedown', function(e) {
-  isViewDragging = true;
-  lastViewX = e.clientX;
-});
-window.addEventListener('mousemove', function(e) {
-  if (!isViewDragging) return;
-  var deltaX = e.clientX - lastViewX;
-  cam.angle += deltaX * 0.005; // 滑动调向敏感度
-  lastViewX = e.clientX;
-});
-window.addEventListener('mouseup', function() {
-  isViewDragging = false;
-});
-
-// 触屏滑动支持
-viewBox.addEventListener('touchstart', function(e) {
-  if(e.touches.length === 1) {
-    isViewDragging = true;
-    lastViewX = e.touches[0].clientX;
-  }
-}, {passive: true});
-viewBox.addEventListener('touchmove', function(e) {
-  if(!isViewDragging || e.touches.length !== 1) return;
-  var deltaX = e.touches[0].clientX - lastViewX;
-  cam.angle += deltaX * 0.008;
-  lastViewX = e.touches[0].clientX;
-}, {passive: true});
-viewBox.addEventListener('touchend', function() {
-  isViewDragging = false;
-});
-
-// === 键盘支持 ===
-document.addEventListener('keydown',function(e){
-  keys[e.key]=true;
-  if([' ','ArrowUp','ArrowDown'].indexOf(e.key)>=0) e.preventDefault();
-  var btn=document.querySelector('.pbtn[data-key="'+e.key+'"]');
-  if(btn)btn.classList.add('pressed');
-});
-document.addEventListener('keyup',function(e){
-  keys[e.key]=false;
-  var btn=document.querySelector('.pbtn[data-key="'+e.key+'"]');
-  if(btn)btn.classList.remove('pressed');
-});
-
-document.querySelectorAll('.pbtn[data-key]').forEach(function(btn){
-  var k=btn.dataset.key;
-  function dn(){keys[k]=true; btn.classList.add('pressed');}
-  function up(){keys[k]=false;btn.classList.remove('pressed');}
-  btn.addEventListener('mousedown',dn); btn.addEventListener('mouseup',up); btn.addEventListener('mouseleave',up);
-  btn.addEventListener('touchstart',function(e){e.preventDefault();dn();},{passive:false});
-  btn.addEventListener('touchend',  function(e){e.preventDefault();up();},{passive:false});
-});
-
-document.getElementById('btn-hover').addEventListener('click',function(){
-  hoverLock=!hoverLock;vz=0;tLog(hoverLock?'[HOVR] 高度锁定激活':'[HOVR] 高度锁定解除');
-});
-
-// 🌟 3. 终端高级全景3D空间交互逻辑（任意视角旋转 + 平移 + 缩放）
-var tw=document.getElementById('tmap-wrap');
-var tDragMode = 0; // 1:左键平移, 2:右键旋转
-var tDragX=0, tDragY=0;
-
-tw.addEventListener('contextmenu', function(e) { e.preventDefault(); }); // 禁用右键菜单
-
-tw.addEventListener('mousedown', function(e) {
-  tDragMode = (e.button === 2 || e.ctrlKey) ? 2 : 1;
-  tw.classList.add('dragging');
-  tDragX = e.clientX; tDragY = e.clientY;
-  tFollow = false; 
-  document.getElementById('btn-follow').textContent = '跟随 OFF';
-});
-
-window.addEventListener('mousemove', function(e) {
-  if (tDragMode === 0) return;
-  var dx = e.clientX - tDragX;
-  var dy = e.clientY - tDragY;
-  tDragX = e.clientX; tDragY = e.clientY;
-
-  if (tDragMode === 1) {
-    // 平移逻辑
-    var factor = tOrbit.radius * 0.2;
-    tPan.x -= (dx * Math.cos(tOrbit.theta) - dy * Math.sin(tOrbit.theta)) * factor;
-    tPan.y -= (dx * Math.sin(tOrbit.theta) + dy * Math.cos(tOrbit.theta)) * factor;
-  } else if (tDragMode === 2) {
-    // 🌟 核心：随意视角空间旋转逻辑
-    tOrbit.theta -= dx * 0.01;
-    tOrbit.phi = Math.max(0.1, Math.min(Math.PI/2 - 0.05, tOrbit.phi - dy * 0.01));
-  }
-  termDirty = true;
-});
-
-window.addEventListener('mouseup', function() { 
-  tDragMode = 0; 
-  tw.classList.remove('dragging'); 
-});
-
-// 滚轮缩放
-tw.addEventListener('wheel', function(e) {
-  e.preventDefault();
-  if(e.deltaY > 0) tOrbit.radius *= 1.08;
-  else tOrbit.radius /= 1.08;
-  tOrbit.radius = Math.max(0.5, Math.min(10, tOrbit.radius));
-  termDirty = true;
-}, {passive:false});
-
-// 移动端多点触控双指旋转
-var tTouchStartDist = 0;
-tw.addEventListener('touchstart', function(e) {
-  tFollow = false;
-  document.getElementById('btn-follow').textContent = '跟随 OFF';
-  if (e.touches.length === 1) {
-    tDragMode = 1; tDragX = e.touches[0].clientX; tDragY = e.touches[0].clientY;
-  } else if (e.touches.length === 2) {
-    tDragMode = 2; // 双指直接开启旋转模式
-    tTouchStartDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-    tDragX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-    tDragY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-  }
-}, {passive: true});
-
-tw.addEventListener('touchmove', function(e) {
-  if (tDragMode === 0) return;
-  if (e.touches.length === 1 && tDragMode === 1) {
-    var dx = e.touches[0].clientX - tDragX;
-    var dy = e.touches[0].clientY - tDragY;
-    tDragX = e.touches[0].clientX; tDragY = e.touches[0].clientY;
-    tPan.x -= dx * 0.15; tPan.y -= dy * 0.15;
-    termDirty = true;
-  } else if (e.touches.length === 2 && tDragMode === 2) {
-    var midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-    var midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-    var dx = midX - tDragX; var dy = midY - tDragY;
-    tDragX = midX; tDragY = midY;
-    
-    // 旋转
-    tOrbit.theta -= dx * 0.015;
-    tOrbit.phi = Math.max(0.1, Math.min(Math.PI/2 - 0.05, tOrbit.phi - dy * 0.015));
-    
-    // 缩放
-    var dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-    if(tTouchStartDist > 0) {
-      tOrbit.radius /= (dist / tTouchStartDist);
-      tOrbit.radius = Math.max(0.5, Math.min(10, tOrbit.radius));
-      tTouchStartDist = dist;
-    }
-    termDirty = true;
-  }
-}, {passive: false});
-
-tw.addEventListener('touchend', function() { tDragMode = 0; });
-
-document.getElementById('btn-np').addEventListener('click',function(){genPlanet();});
-document.getElementById('btn-land').addEventListener('click',doAutoLand);
-document.getElementById('btn-to').addEventListener('click',doAutoTakeoff);
-document.getElementById('btn-follow').addEventListener('click',function(){
-  tFollow=!tFollow;this.textContent='跟随 '+(tFollow?'ON':'OFF');termDirty=true;
-});
-document.getElementById('btn-clearsv').addEventListener('click',function(){
-  survey.length=0;termDirty=true;tLog('[SYS] 3D地形数据已重置清空');
-});
-
-genPlanet();
-loop();
-
-}());
+requestAnimationFrame(frame);
 </script>
 </body>
 </html>
