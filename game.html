@@ -41,7 +41,12 @@
   .back-btn:hover{border-color:var(--phos);color:var(--phos)}
   .back-btn:focus-visible{outline:1px solid var(--phos);outline-offset:2px}
   #gyro{right:14px;bottom:12px;width:118px;height:118px}
-  #warnHud{top:52px;left:50%;transform:translateX(-50%);padding:5px 14px;display:none;
+  #digBanner{top:44px;left:50%;transform:translateX(-50%);padding:5px 14px;display:none;
+    color:var(--amber);border:1px solid rgba(255,180,84,.5);background:rgba(24,15,5,.8);letter-spacing:.1em}
+  #cargo{display:grid;grid-template-columns:repeat(10,1fr);gap:3px}
+  .cg{height:17px;border:1px solid var(--line);background:var(--panel-2);
+    display:flex;align-items:center;justify-content:center;font-size:9px;color:rgba(0,0,0,.75);font-weight:600}
+  #warnHud{top:82px;left:50%;transform:translateX(-50%);padding:5px 14px;display:none;
     color:#ff6b5e;border:1px solid rgba(255,107,94,.55);background:rgba(30,8,8,.82);letter-spacing:.1em}
   #fpvHud{display:none;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:rgba(255,90,77,.92)}
   #fpvHud .cross{font-size:20px;line-height:1}
@@ -79,7 +84,7 @@
 
   canvas.term{display:block;width:100%;background:var(--panel-2);border:1px solid var(--line)}
   #profile{height:172px;touch-action:none;cursor:grab}
-  #navmap{height:150px}
+  #navmap{height:126px}
 
   #logWrap{flex:1;min-height:60px;display:flex;flex-direction:column;padding:10px 14px 6px}
   #log{flex:1;overflow-y:auto;font-size:11px;line-height:1.75;color:#9fc3c0;scrollbar-width:thin}
@@ -90,13 +95,12 @@
   #log::-webkit-scrollbar{width:4px}
   #log::-webkit-scrollbar-thumb{background:var(--line)}
 
-  #ctrls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:10px 14px 12px;border-top:1px solid var(--line)}
+  #ctrls{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 14px 12px;border-top:1px solid var(--line)}
   button{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--ink);cursor:pointer;
     background:var(--panel-2);border:1px solid var(--line);padding:9px 4px;transition:border-color .15s,color .15s}
   button:hover{border-color:var(--phos);color:var(--phos)}
   button:focus-visible{outline:1px solid var(--phos);outline-offset:2px}
   button.on{border-color:var(--phos);color:var(--phos);background:rgba(65,232,200,.08)}
-  #btnMode{grid-column:1/3}
   #btnScan{color:var(--amber)}
   #btnScan:hover{border-color:var(--amber)}
 
@@ -114,18 +118,19 @@
     <a href="index.html" class="back-btn">← 返回主页</a>
     <div class="hud" id="modeChip"><span class="dot"></span><span id="modeTxt">手动模式 MANUAL</span></div>
     <div class="hud" id="scanBanner">▚ 正在扫描地形剖面…</div>
+    <div class="hud" id="digBanner">⛏ 钻探中</div>
     <div class="hud" id="warnHud"></div>
     <canvas class="hud" id="gyro"></canvas>
     <div class="hud" id="fpvHud"><div class="cross">┼</div><div class="dist" id="fpvDist">LASER ∅</div></div>
     <div class="hud" id="keys">
-      <b>W/S</b> 前进·后退 &nbsp; <b>A/D</b> 转向 &nbsp; <b>Q/E</b> 桅杆升降 &nbsp; <b>Shift/C</b> 涡轮升·降<br>
-      <b>空格</b> 扫描回传 &nbsp; <b>Tab</b> 第一/第三人称 &nbsp; <b>M</b> 手动/自动 &nbsp; <b>拖拽/滚轮</b> 视角
+      <b>W/S/A/D</b> 行驶转向 &nbsp; <b>空格/C</b> 涡轮升·降 &nbsp; <b>Shift</b> 空中加力 &nbsp; <b>Q/E</b> 桅杆<br>
+      <b>N</b> 扫描 &nbsp; <b>M</b> 连扫 &nbsp; <b>G</b> 采集 &nbsp; <b>H</b> 钻探 &nbsp; <b>U</b> 无人机 &nbsp; <b>V</b> 自动 &nbsp; <b>P</b> 星球 &nbsp; <b>Tab</b> 视角
     </div>
   </div>
 
   <aside id="terminal">
     <header>
-      <h1>GEO-7 巡视器<small>SURFACE SURVEY TERMINAL</small></h1>
+      <h1>GEO-7 巡视器<small id="planetTag">SURFACE SURVEY · 火星</small></h1>
       <span id="link">下行链路</span>
     </header>
 
@@ -141,6 +146,7 @@
         <div class="t"><label>激光 L</label><data id="tfl">--<em>m</em></data></div>
         <div class="t"><label>激光 R</label><data id="tfr">--<em>m</em></data></div>
         <div class="t"><label>垂直激光</label><data id="tvl">0<em>m</em></data></div>
+        <div class="t"><label>地貌</label><data id="tb">--</data></div>
         <div id="bars">
           <div class="bar"><label>桅杆</label><div class="bt"><div id="mastFill" class="bf" style="width:25%"></div></div></div>
           <div class="bar"><label>推进剂</label><div class="bt"><div id="fuelFill" class="bf" style="width:100%"></div></div></div>
@@ -159,18 +165,28 @@
       <canvas id="navmap" class="term"></canvas>
     </div>
 
+    <div class="sec">
+      <div class="cap"><span>矿物货舱 CARGO · T1→T20</span><span id="cargoInfo">总值 0 · 0/20 种</span></div>
+      <div id="cargo"></div>
+    </div>
+
     <div id="logWrap">
       <div class="cap"><span>数据链路 LOG</span></div>
       <div id="log"></div>
     </div>
 
     <div id="ctrls">
-      <button id="btnMode">切换自动巡查 [M]</button>
-      <button id="btnScan">扫描 [空格]</button>
+      <button id="btnMode">自动巡查 [V]</button>
+      <button id="btnScan">扫描 [N]</button>
+      <button id="btnCont">连续扫描 [M]</button>
+      <button id="btnDrone">无人机 [U]</button>
+      <button id="btnCollect">采集矿物 [G]</button>
+      <button id="btnDig">钻探 [H]</button>
       <button id="btnUp">桅杆升 [Q]</button>
       <button id="btnDown">桅杆降 [E]</button>
-      <button id="btnFly">推进器 [Shift]</button>
-      <button id="btnTerrain" style="grid-column:1/-1">重生成地形</button>
+      <button id="btnFly">升空·按住 [空格]</button>
+      <button id="btnPlanet">切换星球 [P]</button>
+      <button id="btnTerrain" style="grid-column:3/5">重生成地形</button>
     </div>
   </aside>
 </div>
@@ -196,16 +212,43 @@ function fbm(x,z){
   for(let o=0;o<5;o++){ f += noise2(x*fr, z*fr)*amp; tot+=amp; amp*=.5; fr*=2.03; }
   return f/tot;
 }
+/* ================= 矿物(20 级,越深越稀有越厉害) ================= */
+const MINERALS=[
+  {n:'硅尘',c:0x9aa4ac,v:1},   {n:'铁砂',c:0xb0703f,v:2},   {n:'铜矿',c:0xc98a4b,v:4},   {n:'冰晶',c:0xa8d8e8,v:6},
+  {n:'镍块',c:0xc0c8cf,v:9},   {n:'钛石',c:0x8fa3b8,v:13},  {n:'银脉',c:0xdfe6ec,v:18},  {n:'金珠',c:0xf2c14e,v:25},
+  {n:'铱粒',c:0xe8e2d0,v:34},  {n:'铂晶',c:0xeef2f5,v:45},  {n:'蓝钻',c:0x5ac8ff,v:60},  {n:'翠玉髓',c:0x41e8a0,v:78},
+  {n:'紫晶簇',c:0xb07ce8,v:100},{n:'相变石',c:0xff8ad8,v:130},{n:'反物质壳',c:0xff5a4d,v:170},{n:'零点冰',c:0x8af0ff,v:220},
+  {n:'夸克玻珠',c:0xffe08a,v:290},{n:'中子锭',c:0xfff8f0,v:380},{n:'暗物晶',c:0x7c5cff,v:500},{n:'奇点核',c:0x41e8c8,v:666},
+];
+const mHex=i=>'#'+MINERALS[i].c.toString(16).padStart(6,'0');
+
+/* ================= 星球与地貌 ================= */
+const PLANETS=[
+  {name:'火星',   sky:0x1a1214, fog:0x2a1c19, sun:0xffd9b0, low:0x4f2c20, mid:0x9c5a3a, high:0xd8a071, rock:0x6b4433, g:11},
+  {name:'月球',   sky:0x050608, fog:0x0d0e12, sun:0xffffff, low:0x33363b, mid:0x74787f, high:0xc9cdd3, rock:0x55585e, g:4.5},
+  {name:'冰卫二', sky:0x0a1218, fog:0x18242e, sun:0xdff2ff, low:0x2e4a5c, mid:0x7fa8bd, high:0xe8f4fa, rock:0x93aebd, g:6},
+  {name:'绯红星', sky:0x120a16, fog:0x241426, sun:0xffc4e0, low:0x3c1f33, mid:0x8a4462, high:0xd898ae, rock:0x6e3350, g:13},
+];
+let planetIdx=0;
+const PL=()=>PLANETS[planetIdx];
+const clamp01=v=>v<0?0:v>1?1:v;
+
 const CHUNK = 120;                 // 地形分块边长(米),无限延伸
 const BASE = {x:26, z:-30, r:26};  // 太空基地位置与平整半径
 let baseH = null;                  // 基地地坪高程(随种子变化)
 function rawH(x,z){
-  const s = 0.011;
-  let h = fbm(x*s+37.2, z*s+91.7);
-  h = Math.pow(h, 1.35);
-  const macro = fbm(x*.0016+7.7, z*.0016+3.1);   // 大尺度地貌起伏
-  const micro = noise2(x*.33+5.5, z*.33+2.2);    // 细部起伏(高分辨率层)
-  return (h-.42)*36 + (macro-.5)*44 + (micro-.5)*.9;
+  const b = fbm(x*.0007+13.1, z*.0007+71.3);            // 群系场:盆地→平原→丘陵→山川
+  const d = Math.pow(fbm(x*.011+37.2, z*.011+91.7), 1.3);
+  const ridge = 1-Math.abs(2*fbm(x*.0045+3.3, z*.0045+9.9)-1);   // 山脊线
+  const micro = noise2(x*.33+5.5, z*.33+2.2);
+  const m = smooth(clamp01((b-.42)/.28));               // 山川权重
+  const basin = smooth(clamp01((.36-b)/.16));           // 盆地权重
+  const amp = 6 + m*58;                                 // 平原缓 → 山川陡
+  return (d-.45)*amp + m*(ridge-.55)*40 - basin*18 + (micro-.5);
+}
+function biomeAt(x,z){
+  const b = fbm(x*.0007+13.1, z*.0007+71.3);
+  return b<.34?'盆地' : b<.48?'平原' : b<.6?'丘陵' : '山川';
 }
 function terrainH(x,z){            // 世界坐标 → 高程(基地周边平整过渡)
   const dx=x-BASE.x, dz=z-BASE.z, d2=dx*dx+dz*dz;
@@ -233,11 +276,26 @@ scene.add(sun);
 
 /* ---- 无限地形:分块流式加载(岩石随块生成,确定性哈希保证复访一致) ---- */
 const CSEG=52, VIEW=2;                    // 每块细分(高分辨率) / 加载半径(块)
-const chunks = new Map();                 // "i,j" -> {mesh, rockGroup, rocks[]}
+const chunks = new Map();                 // "i,j" -> {mesh, rockGroup, rocks[], ores[]}
+const takenOres = new Set();              // 已采集节点(跨分块卸载持久)
 const terrainMat = new THREE.MeshLambertMaterial({vertexColors:true});
-const rockGeo = new THREE.DodecahedronGeometry(1,0);
-const rockMat = new THREE.MeshLambertMaterial({color:0x6b4433});
+const rockGeo   = new THREE.DodecahedronGeometry(1,0);
+const spireGeo  = new THREE.ConeGeometry(1,1,7);
+const slabGeo   = new THREE.BoxGeometry(1,1,1);
+const crystalGeo= new THREE.OctahedronGeometry(1,0);
+const rockMat   = new THREE.MeshLambertMaterial({color:0x6b4433});
+const crystalMat= new THREE.MeshPhongMaterial({color:0xd8a071, shininess:95});
 const cLow=new THREE.Color(0x4f2c20), cMid=new THREE.Color(0x9c5a3a), cHigh=new THREE.Color(0xd8a071);
+function applyPlanet(){
+  const P=PL();
+  scene.background.setHex(P.sky);
+  scene.fog.color.setHex(P.fog);
+  sun.color.setHex(P.sun);
+  cLow.setHex(P.low); cMid.setHex(P.mid); cHigh.setHex(P.high);
+  rockMat.color.setHex(P.rock);
+  crystalMat.color.setHex(P.high);
+  document.getElementById('planetTag').textContent='SURFACE SURVEY · '+P.name;
+}
 
 function buildChunk(ci,cj){
   const geo = new THREE.PlaneGeometry(CHUNK,CHUNK,CSEG,CSEG);
@@ -256,7 +314,7 @@ function buildChunk(ci,cj){
     const nz=terrainH(x,z-e)-terrainH(x,z+e);
     const inv=1/Math.hypot(nx,2*e,nz);
     normals[i*3]=nx*inv; normals[i*3+1]=2*e*inv; normals[i*3+2]=nz*inv;
-    const t=THREE.MathUtils.clamp((h+22)/44,0,1);
+    const t=THREE.MathUtils.clamp((h+24)/68,0,1);
     if(t<.5) c.copy(cLow).lerp(cMid,t*2); else c.copy(cMid).lerp(cHigh,(t-.5)*2);
     const dust=.9+hash(i,ci*131+cj*7)*0.2;
     colors[i*3]=c.r*dust; colors[i*3+1]=c.g*dust; colors[i*3+2]=c.b*dust;
@@ -265,26 +323,78 @@ function buildChunk(ci,cj){
   geo.setAttribute('normal', new THREE.BufferAttribute(normals,3));
   const mesh=new THREE.Mesh(geo, terrainMat);
   mesh.position.set(ox,0,oz);
-  // 本块岩石(实体)
+  // 本块障碍(实体):巨石 / 石柱 / 岩板 / 晶簇
   const rg=new THREE.Group(); const rocks=[];
-  const cnt=3+((hash(ci*91+17, cj*53+29)*6)|0);
+  const cnt=4+((hash(ci*91+17, cj*53+29)*8)|0);
   for(let n=0;n<cnt;n++){
     const x=ci*CHUNK + hash(ci*7+n*13+1, cj*11+n*17+3)*CHUNK;
     const z=cj*CHUNK + hash(ci*19+n*23+5, cj*29+n*31+7)*CHUNK;
     if(x*x+z*z<64) continue;                // 着陆点附近留空
     const bdx=x-BASE.x, bdz=z-BASE.z;
     if(bdx*bdx+bdz*bdz < (BASE.r+6)*(BASE.r+6)) continue;   // 基地区域留空
-    const s=.4+hash(ci*3+n, cj*5+n*9)*1.9;
-    const sy=s*(.6+hash(ci+n*7, cj+n*3)*.5);
-    const rock=new THREE.Mesh(rockGeo, rockMat);
-    rock.position.set(x, terrainH(x,z)+s*.3, z);
-    rock.scale.set(s, sy, s);
-    rock.rotation.set(hash(n,ci)*3, hash(n,cj)*3, hash(ci,n)*3);
-    rg.add(rock);
-    rocks.push({x, z, r:s*.95, top:terrainH(x,z)+s*.3+sy});
+    const gh=terrainH(x,z);
+    const s=.4+hash(ci*3+n, cj*5+n*9)*2.0;
+    const typ=(hash(ci*13+n*29, cj*7+n*11)*4)|0;
+    let mesh, r=s*.95, top;
+    if(typ===0){                              // 巨石
+      const sy=s*(.6+hash(ci+n*7, cj+n*3)*.5);
+      mesh=new THREE.Mesh(rockGeo, rockMat);
+      mesh.scale.set(s,sy,s);
+      mesh.position.set(x, gh+s*.3, z);
+      top=gh+s*.3+sy;
+    }else if(typ===1){                        // 石柱
+      const hgt=s*2.8;
+      mesh=new THREE.Mesh(spireGeo, rockMat);
+      mesh.scale.set(s*.6, hgt, s*.6);
+      mesh.position.set(x, gh+hgt*.42, z);
+      r=s*.72; top=gh+hgt;
+    }else if(typ===2){                        // 岩板
+      mesh=new THREE.Mesh(slabGeo, rockMat);
+      mesh.scale.set(s*1.5, s*.55, s*.95);
+      mesh.rotation.z=(hash(n,cj*5)-.5)*.5;
+      mesh.position.set(x, gh+s*.28, z);
+      r=s*1.35; top=gh+s*.85;
+    }else{                                    // 晶簇
+      mesh=new THREE.Mesh(crystalGeo, crystalMat);
+      mesh.scale.set(s*.5, s*1.9, s*.5);
+      mesh.position.set(x, gh+s*.72, z);
+      r=s*.62; top=gh+s*2.4;
+    }
+    mesh.rotation.y=hash(n,ci)*3.14;
+    rg.add(mesh);
+    rocks.push({x, z, r, top});
+  }
+  // 本块矿物节点(发光晶体,山川更易出高品质;T11+ 带光柱便于远处发现)
+  const ores=[];
+  const oc=(hash(ci*57+3, cj*77+9)*3)|0;
+  for(let n=0;n<oc;n++){
+    const key=ci+','+cj+','+n;
+    if(takenOres.has(key)) continue;
+    const x=ci*CHUNK + hash(ci*31+n*7+2, cj*43+n*19+6)*CHUNK;
+    const z=cj*CHUNK + hash(ci*61+n*11+8, cj*17+n*29+4)*CHUNK;
+    if(x*x+z*z<64) continue;
+    const bdx2=x-BASE.x, bdz2=z-BASE.z;
+    if(bdx2*bdx2+bdz2*bdz2 < (BASE.r+6)*(BASE.r+6)) continue;
+    let tier=Math.floor(Math.pow(hash(ci*23+n*5, cj*41+n*13), 2.4)*9);
+    if(biomeAt(x,z)==='山川') tier=Math.min(19, tier+((hash(ci+n,cj*3+n)*4)|0));
+    const gh2=terrainH(x,z);
+    const mm=new THREE.Mesh(crystalGeo, new THREE.MeshBasicMaterial({color:MINERALS[tier].c}));
+    const sc=.3+tier*.018;
+    mm.scale.set(sc, sc*1.9, sc);
+    mm.position.set(x, gh2+sc*1.3, z);
+    mm.rotation.y=hash(n,ci)*3;
+    rg.add(mm);
+    let bm=null;
+    if(tier>=10){
+      bm=new THREE.Line(new THREE.BufferGeometry().setFromPoints(
+        [new THREE.Vector3(x,gh2,z), new THREE.Vector3(x,gh2+7,z)]),
+        new THREE.LineBasicMaterial({color:MINERALS[tier].c, transparent:true, opacity:.5}));
+      rg.add(bm);
+    }
+    ores.push({x, z, tier, mesh:mm, beam:bm, taken:false, key});
   }
   scene.add(mesh); scene.add(rg);
-  chunks.set(ci+','+cj, {mesh, rockGroup:rg, rocks});
+  chunks.set(ci+','+cj, {mesh, rockGroup:rg, rocks, ores});
 }
 function disposeChunk(k){
   const c=chunks.get(k); if(!c) return;
@@ -539,8 +649,46 @@ scene.add(rover);
     thrusters.rear=rh;
   }
   rover.userData.thrusters=thrusters;
+  // ---- 采矿钻头(车腹,钻探时展开旋转) ----
+  const drill=new THREE.Mesh(new THREE.ConeGeometry(.17,.95,8), grey);
+  drill.rotation.x=Math.PI; drill.position.set(0,.4,.35); drill.visible=false;
+  rover.add(drill);
+  rover.userData.drill=drill;
+  // ---- 细节:四角琥珀标灯 ----
+  for(const sx of [-.85,.85]) for(const sz of [-1.28,1.28]){
+    const ml=new THREE.Mesh(new THREE.BoxGeometry(.09,.05,.09),
+      new THREE.MeshBasicMaterial({color:0xffb454}));
+    ml.position.set(sx,1.86,sz); rover.add(ml);
+  }
 }
 const MAST_MIN=.55, MAST_MAX=2.6;
+
+/* ================= 无人机 ================= */
+const drone=new THREE.Group();
+{
+  const w=new THREE.MeshPhongMaterial({color:0xe9edf0,shininess:40});
+  const d=new THREE.MeshPhongMaterial({color:0x22282e,shininess:10});
+  const fMat=new THREE.MeshBasicMaterial({color:0x6fd2ff,transparent:true,opacity:.85,
+        blending:THREE.AdditiveBlending, depthWrite:false});
+  drone.add(new THREE.Mesh(new THREE.BoxGeometry(.55,.16,.55), w));
+  const eye=new THREE.Mesh(new THREE.BoxGeometry(.1,.08,.05), d);
+  eye.position.set(0,0,.3); drone.add(eye);
+  const tl=new THREE.Mesh(new THREE.BoxGeometry(.14,.03,.14), new THREE.MeshBasicMaterial({color:0x41e8c8}));
+  tl.position.y=.1; drone.add(tl);
+  drone.userData.flames=[];
+  for(const sx of [-.34,.34]) for(const sz of [-.34,.34]){
+    const arm=new THREE.Mesh(new THREE.BoxGeometry(.3,.05,.05), w);
+    arm.position.set(sx*.6,0,sz*.6); arm.rotation.y=Math.atan2(sx,sz);
+    const noz=new THREE.Mesh(new THREE.CylinderGeometry(.05,.07,.1,8), d);
+    noz.position.set(sx,-.05,sz);
+    const fl=new THREE.Mesh(new THREE.ConeGeometry(.06,.3,8,1,true), fMat);
+    fl.rotation.x=Math.PI; fl.position.set(sx,-.28,sz);
+    drone.add(arm,noz,fl);
+    drone.userData.flames.push(fl);
+  }
+}
+drone.visible=false;
+scene.add(drone);
 
 /* ================= 状态 ================= */
 const st = {
@@ -559,6 +707,12 @@ const st = {
   packets:0,
   trail:[], trailT:0,
   scanMarks:[],                // 3D 残留扫描线
+  contScan:false,              // 连续扫描模式
+  cargo:new Array(20).fill(0), // 20 级矿物货舱
+  credits:0,                   // 矿物总值
+  dig:null, digHoles:[],       // 钻探进度 / 矿井残留
+  droneCtl:false,              // 是否正在遥控无人机
+  drone:{active:false, ret:false, x:0, y:0, z:0, heading:0, vy:0, spd:0, bat:1},
   clock:0,
 };
 const keys = {};
@@ -566,9 +720,15 @@ addEventListener('keydown', e=>{
   if(e.repeat) return;
   const k = e.key.toLowerCase();
   keys[k]=true;
-  if(k===' '){ e.preventDefault(); startScan(true); }
+  if(k===' '){ e.preventDefault(); }               // 空格 = 升空(按住)
+  if(k==='n') startScan(true);
+  if(k==='m') toggleCont();
+  if(k==='v') toggleMode();
+  if(k==='g') tryCollect();
+  if(k==='h') toggleDig();
+  if(k==='u') toggleDrone();
+  if(k==='p') switchPlanet();
   if(k==='tab'){ e.preventDefault(); toggleCam(); }
-  if(k==='m') toggleMode();
 });
 addEventListener('keyup', e=>keys[e.key.toLowerCase()]=false);
 
@@ -577,6 +737,7 @@ let camYaw=0, camPitch=.42, camDist=13;
 let fpvYaw=0, fpvPitch=-.06;
 let dragging=false, px=0, py=0;
 function toggleCam(){
+  if(st.droneCtl) return;                          // 无人机视角固定第三人称
   st.cam = st.cam==='fpv' ? 'tpv' : 'fpv';
   camera.fov = st.cam==='fpv' ? 72 : 58;
   camera.updateProjectionMatrix();
@@ -613,26 +774,41 @@ sweep.visible=beam.visible=false; scene.add(sweep); scene.add(beam);
 
 function scanLength(){ return 16 + st.mast*46; }   // 桅杆越高,看得越远
 
+function activePose(){
+  return (st.droneCtl && st.drone.active)
+    ? {x:st.drone.x, z:st.drone.z, h:st.drone.heading, src:'drone'}
+    : {x:st.x, z:st.z, h:st.heading, src:'rover'};
+}
 function startScan(fromUser){
   if(st.scanning || st.disabled>0) return;
-  const len = scanLength(), wid = len*.6;
-  const dx=Math.sin(st.heading), dz=Math.cos(st.heading);
-  const rx=dz, rz=-dx;                              // 车体右向
+  const P=activePose();
+  let len;
+  if(P.src==='drone'){                              // 无人机:飞得越高扫得越广
+    const agl=st.drone.y - terrainH(st.drone.x, st.drone.z);
+    len = 16 + clamp01((agl-2)/22)*46;
+  }else len = scanLength();
+  const wid = len*.6;
+  const dx=Math.sin(P.h), dz=Math.cos(P.h);
+  const rx=dz, rz=-dx;
   const NX=40, NZ=54;
   const heights=new Float32Array(NX*NZ);
   let mn=1e9, mx=-1e9;
   for(let j=0;j<NZ;j++)for(let i=0;i<NX;i++){
     const v=j/(NZ-1)*len, u=(i/(NX-1)-.5)*wid;
-    const h=terrainH(st.x+dx*v+rx*u, st.z+dz*v+rz*u);
+    const h=terrainH(P.x+dx*v+rx*u, P.z+dz*v+rz*u);
     heights[j*NX+i]=h;
     if(h<mn)mn=h; if(h>mx)mx=h;
   }
-  st.scanning = {t0:st.clock, dur:1.6, ox:st.x, oz:st.z, dx, dz, rx, rz, len, wid, NX, NZ, heights, mn, mx};
+  st.scanning = {t0:st.clock, dur:1.6, ox:P.x, oz:P.z, dx, dz, rx, rz, len, wid, NX, NZ, heights, mn, mx, src:P.src};
   document.getElementById('scanBanner').style.display='block';
-  if(fromUser) log(`发起区域扫描 · 桅杆 ${(st.mast*100)|0}% · 覆盖 ${len.toFixed(0)}×${wid.toFixed(0)}m`);
+  if(fromUser) log(P.src==='drone'
+    ? `无人机发起区域扫描 · 覆盖 ${len.toFixed(0)}×${wid.toFixed(0)}m`
+    : `发起区域扫描 · 桅杆 ${(st.mast*100)|0}% · 覆盖 ${len.toFixed(0)}×${wid.toFixed(0)}m`);
 }
 
+let lastScanEnd=0;
 function finishScan(){
+  lastScanEnd=st.clock;
   const s = st.scanning; st.scanning=null;
   document.getElementById('scanBanner').style.display='none';
   st.packets++;
@@ -726,6 +902,135 @@ function updateLaser(){
   q.setXYZ(0,hp.x,hp.y,hp.z); q.setXYZ(1,hp.x,gh,hp.z);
   q.needsUpdate=true;
 }
+/* ================= 采矿系统 ================= */
+function renderCargo(){
+  const el=document.getElementById('cargo');
+  el.innerHTML=MINERALS.map((m,i)=>{
+    const c=st.cargo[i];
+    return `<div class="cg" title="T${i+1} ${m.n} ×${c} · 单价 ${m.v}"`+
+      (c>0?` style="background:${mHex(i)}"`:'')+`>${c>0?c:''}</div>`;
+  }).join('');
+  document.getElementById('cargoInfo').textContent=
+    `总值 ${st.credits} · ${st.cargo.filter(c=>c>0).length}/20 种`;
+}
+function gainMineral(tier, how){
+  const m=MINERALS[tier];
+  st.cargo[tier]++; st.credits+=m.v;
+  log(`${how} ▸ <span style="color:${mHex(tier)}">${m.n}</span>(T${tier+1})+${m.v} 值`);
+  renderCargo();
+}
+function tryCollect(){
+  const P=activePose();
+  let best=null, bd=(P.src==='drone'?3.5:4.2)**2;
+  for(const ch of chunks.values()) for(const o of (ch.ores||[])){
+    if(o.taken) continue;
+    const d=(o.x-P.x)**2+(o.z-P.z)**2;
+    if(d<bd){ bd=d; best=o; }
+  }
+  if(!best){ log('附近没有可采集的矿物节点'); return; }
+  best.taken=true; takenOres.add(best.key);
+  if(best.mesh.parent) best.mesh.parent.remove(best.mesh);
+  if(best.beam && best.beam.parent) best.beam.parent.remove(best.beam);
+  gainMineral(best.tier, P.src==='drone'?'无人机采集':'采集');
+}
+function yieldMineral(depth){
+  const bio=biomeAt(st.x,st.z);
+  const bonus=bio==='山川'?2 : bio==='盆地'?1 : 0;
+  const tier=Math.max(0, Math.min(19,
+    Math.floor(Math.pow(Math.random(),1.5)*4 + depth*1.35 + bonus)));
+  gainMineral(tier, `⛏ 深度 ${depth}m`);
+}
+function makeHole(x,z){
+  const g=new THREE.Group();
+  const gh=terrainH(x,z);
+  const disc=new THREE.Mesh(new THREE.CylinderGeometry(1.05,.6,.6,12),
+      new THREE.MeshBasicMaterial({color:0x060608}));
+  disc.position.set(x, gh-.25, z);
+  const rim=new THREE.Mesh(new THREE.TorusGeometry(1.1,.15,6,14), rockMat);
+  rim.rotation.x=Math.PI/2; rim.position.set(x, gh+.06, z);
+  g.add(disc); g.add(rim);
+  scene.add(g);
+  st.digHoles.push(g);
+  if(st.digHoles.length>24) scene.remove(st.digHoles.shift());
+}
+function toggleDig(){
+  if(st.dig){ stopDig('手动停止'); return; }
+  if(st.droneCtl){ log('遥控无人机中,无法钻探'); return; }
+  if(st.air || Math.abs(st.speed)>.8){ log('需停稳在地面才能开始钻探'); return; }
+  if(st.disabled>0) return;
+  st.dig={depth:0, t:0};
+  makeHole(st.x, st.z);
+  document.getElementById('digBanner').textContent='⛏ 钻探中 · 深度 0m(H 停止)';
+  document.getElementById('digBanner').style.display='block';
+  log(`开始钻探 · ${biomeAt(st.x,st.z)}地层,越深品质越高(消耗能量)`);
+}
+function stopDig(reason){
+  st.dig=null;
+  rover.userData.drill.visible=false;
+  document.getElementById('digBanner').style.display='none';
+  log('钻探结束:'+reason);
+}
+
+/* ================= 无人机控制 ================= */
+function toggleDrone(){
+  const D=st.drone;
+  if(!D.active){
+    if(st.mode==='auto') toggleMode();
+    D.active=true; D.ret=false;
+    D.bat=Math.max(D.bat,.3);
+    D.x=st.x; D.z=st.z; D.y=st.y+2.6; D.heading=st.heading; D.vy=0; D.spd=0;
+    st.droneCtl=true;
+    if(st.cam==='fpv'){ st.cam='tpv'; camera.fov=58; camera.updateProjectionMatrix();
+      document.getElementById('fpvHud').style.display='none'; }
+    drone.visible=true;
+    if(st.dig) stopDig('切换无人机');
+    log('<span class="pk">侦察无人机升空</span> · 控制权已切换:WASD 平移转向 / 空格C 升降 / N 扫描 / G 采集 / U 返航');
+  }else if(!D.ret){
+    D.ret=true; st.droneCtl=false;
+    log('无人机返航中…');
+  }
+  syncModeUI();
+}
+function dockDrone(){
+  const D=st.drone;
+  D.active=false; D.ret=false; st.droneCtl=false;
+  drone.visible=false;
+  log('无人机已回收入舱,太阳能充电中');
+  syncModeUI();
+}
+function updateDrone(dt){
+  const D=st.drone;
+  if(!D.active){ D.bat=Math.min(1, D.bat+dt*.08); return; }
+  if(st.droneCtl && !D.ret){
+    const turn=2.3*dt;
+    if(keys['a']) D.heading+=turn;
+    if(keys['d']) D.heading-=turn;
+    let sp=0;
+    if(keys['w']) sp=15; else if(keys['s']) sp=-8;
+    D.spd += (sp-D.spd)*dt*3;
+    if(keys[' '])      D.vy=Math.min( 8, D.vy+18*dt);
+    else if(keys['c']) D.vy=Math.max(-8, D.vy-18*dt);
+    else               D.vy*= (1-6*dt);
+    D.x+=Math.sin(D.heading)*D.spd*dt;
+    D.z+=Math.cos(D.heading)*D.spd*dt;
+    D.y+=D.vy*dt;
+    D.bat=Math.max(0, D.bat-dt*.02);
+    if(D.bat<=.12 && !D.ret){ D.ret=true; st.droneCtl=false; log('<span class="wr">无人机电量低,强制返航</span>'); syncModeUI(); }
+  }
+  if(D.ret){
+    const dx=st.x-D.x, dz=st.z-D.z, dy=(st.y+2.6)-D.y;
+    D.heading=Math.atan2(dx,dz);
+    D.x+=dx*dt*1.6; D.z+=dz*dt*1.6; D.y+=dy*dt*1.6;
+    if(dx*dx+dz*dz<4 && Math.abs(dy)<2) dockDrone();
+  }
+  D.y=Math.max(D.y, terrainH(D.x,D.z)+.6);
+  drone.position.set(D.x,D.y,D.z);
+  drone.rotation.y=D.heading;
+  drone.rotation.z=-D.spd*.012;
+  const act=Math.min(1,.35+Math.abs(D.spd)/15+Math.abs(D.vy)/8);
+  drone.userData.flames.forEach(f=>f.scale.y=act*(0.7+Math.random()*.5));
+}
+
 function pathClear(dist){                          // 当前高度上前方航路是否畅通
   const fx=Math.sin(st.heading), fz=Math.cos(st.heading);
   for(let t=2; t<=dist; t+=1.2){
@@ -764,9 +1069,10 @@ function syncModeUI(){
   const auto = st.mode==='auto';
   document.getElementById('modeChip').classList.toggle('auto', auto);
   document.getElementById('modeTxt').textContent =
-    (auto?'自动巡查 AUTO-SURVEY':'手动模式 MANUAL') + (st.cam==='fpv'?' · FPV':'');
+    st.droneCtl ? '无人机遥控 DRONE-LINK'
+    : (auto?'自动巡查 AUTO-SURVEY':'手动模式 MANUAL') + (st.cam==='fpv'?' · FPV':'');
   document.getElementById('btnMode').classList.toggle('on', auto);
-  document.getElementById('btnMode').textContent = auto?'返回手动遥控 [M]':'切换自动巡查 [M]';
+  document.getElementById('btnMode').textContent = auto?'返回手动 [V]':'自动巡查 [V]';
 }
 
 function steerTo(wp, dt, spd){                 // 朝航点转向并趋近目标速度,返回剩余距离
@@ -798,7 +1104,7 @@ function updateAuto(dt){
       log(`<span class="wr">激光:${st.laser.side}侧 ${st.laser.t.toFixed(1)}m ${KN[st.laser.kind]} · 尝试转向绕行</span>`);
       return;
     }
-    const target = Math.abs(diff)>.6 ? 2.2 : 6.5;
+    const target = Math.abs(diff)>.6 ? 2.6 : 9;
     st.speed += (target-st.speed)*dt*2;
     if(dist<4){ st.speed*= .9; a.phase='raise'; log(`抵达航点 ${a.wpIdx+1}/${a.wps.length},升起桅杆`);}
   }else if(a.phase==='avoid'){
@@ -818,7 +1124,7 @@ function updateAuto(dt){
     }
   }else if(a.phase==='fly'){
     // 飞行中保持沿规划航线朝当前航点前进
-    const dd = steerTo(wp, dt, 5.5);
+    const dd = steerTo(wp, dt, 8);
     if(st.fuel<=.08){
       a.phase='land';
       log('<span class="wr">推进剂不足,沿航线就地降落</span>');
@@ -830,7 +1136,7 @@ function updateAuto(dt){
     }
     if(dd<4) a.phase='land';
   }else if(a.phase==='land'){
-    steerTo(wp, dt, 3);
+    steerTo(wp, dt, 3.5);
     if(st.air && !pathClear(9) && st.fuel>.12) a.phase='fly';   // 降落途中又遇障碍,再爬升
     if(!st.air){ a.phase='drive'; log('着陆成功,继续沿规划航线行进'); }
   }else if(a.phase==='raise'){
@@ -885,6 +1191,8 @@ function updateWarn(tilt, dt){
 
 /* ================= 主循环 ================= */
 function updateRover(dt){
+  const K = st.droneCtl ? {} : keys;             // 遥控无人机时车辆按键静默
+
   const groundH = terrainH(st.x,st.z);
   /* ---- 离线重启 ---- */
   if(st.disabled>0){
@@ -897,38 +1205,44 @@ function updateRover(dt){
   }else{
     if(st.mode==='manual'){
       let thrust = 0;
-      if(keys['w']||keys['arrowup']) thrust += 1;
-      if(keys['s']||keys['arrowdown']) thrust -= .6;
-      st.speed += thrust*(st.air?7:9)*dt;
-      st.speed *= (1 - (st.air? .35 : 2.2)*dt);   // 空中惯性大,地面阻尼大
-      st.speed = THREE.MathUtils.clamp(st.speed, st.air?-6:-4.5, st.air?12:8);
-      const turn = (st.air? .8 : 1.5) * dt * (st.speed>=0||st.air ? 1 : -1);
-      if(keys['a']||keys['arrowleft'])  st.heading += turn;
-      if(keys['d']||keys['arrowright']) st.heading -= turn;
-      if(keys['q']||holdUp)   st.mast=Math.min(1, st.mast+dt*.7);
-      if(keys['e']||holdDown) st.mast=Math.max(0, st.mast-dt*.7);
-      // 四台垂直涡轮:Shift 上升,C 主动下降
-      if((keys['shift']||holdFly) && st.fuel>0){
+      if(K['w']||K['arrowup']) thrust += 1;
+      if(K['s']||K['arrowdown']) thrust -= .6;
+      st.speed += thrust*(st.air?9:13)*dt;
+      st.speed *= (1 - (st.air? .3 : 2.2)*dt);    // 空中惯性大,地面阻尼大
+      st.speed = THREE.MathUtils.clamp(st.speed, st.air?-8:-6, st.air?18:12);
+      const turn = (st.air? .9 : 1.8) * dt * (st.speed>=0||st.air ? 1 : -1);
+      if(K['a']||K['arrowleft'])  st.heading += turn;
+      if(K['d']||K['arrowright']) st.heading -= turn;
+      if(K['q']||holdUp)   st.mast=Math.min(1, st.mast+dt*.7);
+      if(K['e']||holdDown) st.mast=Math.max(0, st.mast-dt*.7);
+      // 空格 = 四喷口上升,C = 主动下降,Shift = 空中尾喷口前进加力
+      if((K[' ']||holdFly) && st.fuel>0){
         st.vy += 26*dt;
         const before=st.fuel;
         st.fuel = Math.max(0, st.fuel - dt*.22);
         if(before>0 && st.fuel===0) log('<span class="wr">推进剂耗尽,注意坠落高度!</span>');
       }
-      if(st.air && keys['c']) st.vy -= 9*dt;
+      if(st.air && K['c']) st.vy -= 9*dt;
+      if(st.air && K['shift'] && st.fuel>0){
+        st.speed = Math.min(18, st.speed + 16*dt);
+        st.fuel = Math.max(0, st.fuel - dt*.05);
+      }
     }else{
       updateAuto(dt);
       // 手动介入即退出自动
-      if(keys['w']||keys['a']||keys['s']||keys['d']||keys['shift']){ toggleMode(); }
+      if(K['w']||K['a']||K['s']||K['d']||K[' ']){ toggleMode(); }
     }
-    // 悬停怠速:燃料充足且未主动下降时,四涡轮限制下落速度(垂直软着陆)
-    if(st.air && st.fuel>0 && !keys['c'] && st.vy<-2.4){
+    // 悬停怠速:燃料充足且未主动下降时,四喷口限制下落速度(垂直软着陆)
+    if(st.air && st.fuel>0 && !K['c'] && st.vy<-2.4){
       st.vy = Math.min(-2.4, st.vy + 14*dt);
       st.fuel = Math.max(0, st.fuel - dt*.04);
     }
   }
-  /* ---- 垂直物理:重力 / 起飞 / 着陆 ---- */
-  st.vy -= 11*dt;
+  /* ---- 垂直物理:星球重力 / 起飞 / 着陆 ---- */
+  st.vy -= PL().g*dt;
   st.y  += st.vy*dt;
+  // 两翼太阳能持续为涡轮蓄能
+  st.fuel = Math.min(1, st.fuel + dt*.045);
   if(st.y <= groundH){
     if(st.air){
       const impact = -st.vy;
@@ -937,10 +1251,29 @@ function updateRover(dt){
       st.air=false;
     }
     st.y=groundH; st.vy=0;
-    st.fuel=Math.min(1, st.fuel + dt*.12);        // 地面缓慢补充推进剂
+    st.fuel=Math.min(1, st.fuel + dt*.1);         // 停驻时补充更快
   }else if(st.y > groundH+.3 && !st.air){
     st.air=true;
-    log('四台垂直涡轮升空');
+    log('四台垂直喷口升空');
+  }
+  /* ---- 钻探 ---- */
+  if(st.dig){
+    if(st.air || K['w']||K['a']||K['s']||K['d']||K[' ']){ stopDig('移动打断'); }
+    else{
+      st.speed *= (1-6*dt);
+      st.dig.t += dt;
+      const drill=rover.userData.drill;
+      drill.visible=true; drill.rotation.y += 15*dt;
+      if(st.dig.t>=1.8){
+        st.dig.t=0; st.dig.depth++;
+        st.fuel=Math.max(0, st.fuel-.035);
+        st.shake=Math.max(st.shake,.14);
+        yieldMineral(st.dig.depth);
+        document.getElementById('digBanner').textContent=`⛏ 钻探中 · 深度 ${st.dig.depth}m(H 停止)`;
+        if(st.dig.depth>=12) stopDig('矿脉见底');
+        else if(st.fuel<.12) stopDig('能量不足');
+      }
+    }
   }
   /* ---- 位移(无限地形,无边界) ---- */
   st.x += Math.sin(st.heading)*st.speed*dt;
@@ -994,7 +1327,7 @@ function updateRover(dt){
 
   // 车轮 & 桅杆 & 喷口火焰
   if(!st.air) rover.userData.wheels.forEach(w=>w.rotation.x += st.speed*dt/0.55);
-  const liftOn  = (keys['shift']||holdFly) && st.fuel>0 && st.disabled<=0;
+  const liftOn  = (K[' ']||holdFly) && st.fuel>0 && st.disabled<=0;
   const hoverOn = st.air && st.fuel>0 && st.disabled<=0;
   const liftPow = liftOn?1 : (hoverOn?.42:0);
   const th = rover.userData.thrusters;
@@ -1002,7 +1335,7 @@ function updateRover(dt){
     fh.visible = liftPow>.02;
     if(fh.visible) fh.scale.y = liftPow*(0.8+Math.random()*.4);
   });
-  const rearPow = st.air ? THREE.MathUtils.clamp(Math.abs(st.speed)/9, .18, 1) : 0;
+  const rearPow = st.air ? THREE.MathUtils.clamp(Math.abs(st.speed)/10 + (K['shift']?.5:0), .18, 1.5) : 0;
   th.rear.visible = rearPow>.05;
   if(th.rear.visible) th.rear.scale.z = rearPow*(0.8+Math.random()*.4);
   const m = rover.userData.mast;
@@ -1026,7 +1359,8 @@ function updateRover(dt){
       }
       p.needsUpdate=true;
       const hp = new THREE.Vector3();
-      m.head.getWorldPosition(hp);
+      if(s.src==='drone') hp.copy(drone.position);
+      else m.head.getWorldPosition(hp);
       const b=beam.geometry.attributes.position;
       const cx=s.ox+s.dx*v, cz=s.oz+s.dz*v;
       b.setXYZ(0, hp.x, hp.y, hp.z);
@@ -1060,15 +1394,19 @@ function updateCamera(dt){
       camera.position.y+Math.sin(cp),
       camera.position.z+Math.cos(yaw)*Math.cos(cp));
   }else{
-    const orbit = st.heading + Math.PI + camYaw;
-    const cd = camDist, cp = camPitch;
-    const tx = st.x + Math.sin(orbit)*Math.cos(cp)*cd;
-    const tz = st.z + Math.cos(orbit)*Math.cos(cp)*cd;
-    let ty = rover.position.y + Math.sin(cp)*cd + 1.5;
-    ty = Math.max(ty, terrainH(tx,tz)+1.8);
+    const dc = st.droneCtl && st.drone.active;
+    const px0=dc?st.drone.x:st.x, pz0=dc?st.drone.z:st.z;
+    const py0=dc?st.drone.y:rover.position.y;
+    const ph =dc?st.drone.heading:st.heading;
+    const orbit = ph + Math.PI + camYaw;
+    const cd = dc? Math.min(camDist,10) : camDist, cp = camPitch;
+    const tx = px0 + Math.sin(orbit)*Math.cos(cp)*cd;
+    const tz = pz0 + Math.cos(orbit)*Math.cos(cp)*cd;
+    let ty = py0 + Math.sin(cp)*cd + (dc?.6:1.5);
+    ty = Math.max(ty, terrainH(tx,tz)+1.2);
     const k = 1-Math.pow(.001, dt);
     camera.position.lerp(new THREE.Vector3(tx,ty,tz), k);
-    const look = new THREE.Vector3(st.x, rover.position.y+2.2, st.z);
+    const look = new THREE.Vector3(px0, py0+(dc?.4:2.2), pz0);
     camera.lookAt(look);
   }
   if(st.shake>0){
@@ -1205,7 +1543,7 @@ function buildNavBackdrop(){
   const ictx=off.getContext('2d'), img=ictx.createImageData(n,n);
   for(let j=0;j<n;j++)for(let i=0;i<n;i++){
     const x=navCenter.x+(i/(n-1)-.5)*NAV_SPAN, z=navCenter.z+(j/(n-1)-.5)*NAV_SPAN;
-    const t=THREE.MathUtils.clamp((terrainH(x,z)+22)/50,0,1);
+    const t=THREE.MathUtils.clamp((terrainH(x,z)+24)/72,0,1);
     const k=(j*n+i)*4;
     img.data[k]=14+t*46; img.data[k+1]=22+t*40; img.data[k+2]=28+t*36; img.data[k+3]=255;
   }
@@ -1252,6 +1590,12 @@ function renderNav(){
   ctx.fillStyle='#fff';
   ctx.beginPath(); ctx.moveTo(0,-5); ctx.lineTo(3.6,4); ctx.lineTo(-3.6,4); ctx.closePath(); ctx.fill();
   ctx.restore();
+  if(st.drone.active){
+    const [ddx,ddy]=M(st.drone.x,st.drone.z);
+    ctx.save(); ctx.translate(ddx,ddy); ctx.rotate(Math.PI/4);
+    ctx.fillStyle='#41e8c8'; ctx.fillRect(-2.6,-2.6,5.2,5.2);
+    ctx.restore();
+  }
   ctx.restore();   // 结束窗口裁剪
 }
 
@@ -1318,6 +1662,7 @@ function updateTele(dt){
   put('tfl', st.lread.l.toFixed(1));
   put('tfr', st.lread.r.toFixed(1));
   put('tvl', st.vlaser.toFixed(1));
+  put('tb', biomeAt(st.x,st.z));
   document.getElementById('fpvDist').textContent =
     `LASER L ${st.lread.l.toFixed(1)} · R ${st.lread.r.toFixed(1)}` +
     (st.laser? `  ⚠ ${st.laser.side} ${KN[st.laser.kind]}` : '');
@@ -1339,13 +1684,7 @@ bind('btnMode', toggleMode);
 bind('btnScan', ()=>startScan(true));
 bind('btnTerrain', ()=>{
   seed=(Math.random()*1e9)|0;
-  st.x=0; st.z=0; st.speed=0; st.trail.length=0; st.auto.wps=[];
-  st.y=terrainH(0,0); st.vy=0; st.air=false;
-  navScans.length=0;
-  resetWorld();
-  scans.length=0; gmn=1e9; gmx=-1e9; mosaicRot=0; mosaicZoom=1;
-  renderProfile();
-  document.getElementById('profTag').textContent='待回传';
+  respawn();
   log('<span class="wr">地形已重新生成</span> · 噪声种子 #'+seed.toString(16).toUpperCase());
 });
 const hold=(id,set)=>{const b=document.getElementById(id);
@@ -1355,11 +1694,47 @@ hold('btnUp',  v=>holdUp=v);
 hold('btnDown',v=>holdDown=v);
 hold('btnFly', v=>holdFly=v);
 
+function toggleCont(){
+  st.contScan=!st.contScan;
+  document.getElementById('btnCont').classList.toggle('on', st.contScan);
+  log(st.contScan?'<span class="pk">连续扫描已开启</span> · 行进中自动逐段回传拼图':'连续扫描已关闭');
+}
+bind('btnCont', toggleCont);
+bind('btnCollect', tryCollect);
+bind('btnDig', toggleDig);
+bind('btnDrone', toggleDrone);
+function respawn(){
+  st.x=0; st.z=0; st.speed=0; st.trail.length=0; st.auto.wps=[];
+  st.vy=0; st.air=false;
+  if(st.dig) stopDig('世界重置');
+  st.digHoles.forEach(g=>scene.remove(g)); st.digHoles.length=0;
+  if(st.drone.active) dockDrone();
+  takenOres.clear();
+  navScans.length=0;
+  resetWorld();
+  st.y=terrainH(0,0);
+  scans.length=0; gmn=1e9; gmx=-1e9; mosaicRot=0; mosaicZoom=1;
+  renderProfile();
+  document.getElementById('profTag').textContent='待回传';
+}
+function switchPlanet(){
+  planetIdx=(planetIdx+1)%PLANETS.length;
+  seed=(Math.random()*1e9)|0;
+  applyPlanet();
+  respawn();
+  log(`<span class="wr">跃迁抵达 ${PL().name}</span> · 表面重力 ${PL().g} m/s² · 全新地貌与障碍已生成`);
+}
+bind('btnPlanet', switchPlanet);
+
 /* ================= 启动 ================= */
+applyPlanet();
 resetWorld();
 st.y = terrainH(0,0);
 syncModeUI();
-log('GEO-7 巡视器着陆完成 · 东北方向可见白色前哨基地,信标闪烁处');
+log('GEO-7 巡视器着陆于 '+PL().name+' · 东北方向可见白色前哨基地');
+log('操作:空格升 / C 降 / Shift 空中加力;N 扫描 · M 连续扫描 · V 自动巡查 · P 切换星球');
+log('采矿:靠近发光晶体按 G 采集;停稳按 H 钻探(越深品质越高,T11+ 矿点带光柱);U 放出无人机遥控侦察');
+renderCargo();
 log('左右激光平行轮列、对地 45°:读数偏短=抬升/岩石,偏长=陡坎;多次扫描将拼成一张高度图,可拖动旋转、滚轮缩放');
 log('自动巡查:激光报警先转向绕行,持续 3.4s 无法出围才起飞越障,全程沿规划航线');
 
@@ -1371,6 +1746,7 @@ function frame(now){
   const dt=Math.min((now-last)/1000,.05); last=now;
   st.clock+=dt;
   ensureChunks(2);                 // 无限地形:每帧最多补建 2 块
+  if(st.contScan && !st.scanning && st.disabled<=0 && st.clock-lastScanEnd>1.4) startScan(false);
   if(baseGroup) baseGroup.userData.beacon.visible = (st.clock%1.4)<.9;
   // 视口尺寸
   const vw=canvas.clientWidth, vh=canvas.clientHeight;
@@ -1380,6 +1756,7 @@ function frame(now){
     camera.aspect=vw/vh; camera.updateProjectionMatrix();
   }
   updateRover(dt);
+  updateDrone(dt);
   updateLaser();
   updateCamera(dt);
   updateTele(dt);
