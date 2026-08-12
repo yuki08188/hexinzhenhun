@@ -1,30 +1,922 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <title>核芯震魂</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body {
-            background: #f4f7fc;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-        }
-        h1 {
-            color: #326de6;
-            font-size: 1.5rem;
-            font-weight: bold;
-            text-align: center;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CYBER-MAPPER 3D // 赛博车模终端</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    :root {
+      --bg-color: #04060a;
+      --card-bg: rgba(10, 16, 28, 0.88);
+      --primary-cyan: #00f3ff;
+      --accent-blue: #0066ff;
+      --danger-red: #ff0055;
+      --warning-yellow: #ffaa00;
+      --safe-green: #00ff66;
+      --text-main: #e2e8f0;
+      --font-digital: 'Orbitron', sans-serif;
+      --font-body: 'Rajdhani', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      touch-action: none;
+    }
+
+    #three-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+
+    /* --- 左上角悬浮赛博朋克返回按钮 --- */
+    .back-btn {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 1000;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: rgba(10, 16, 28, 0.85);
+      color: var(--primary-cyan);
+      border: 1px solid rgba(0, 243, 255, 0.4);
+      border-radius: 6px;
+      font-family: var(--font-digital);
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-decoration: none;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+
+    .back-btn:hover {
+      background: rgba(0, 243, 255, 0.25);
+      border-color: var(--primary-cyan);
+      color: #ffffff;
+      box-shadow: 0 0 25px rgba(0, 243, 255, 0.6);
+      transform: translateX(-3px);
+    }
+
+    .back-btn:active {
+      transform: translateX(-1px) scale(0.96);
+    }
+
+    .back-btn .btn-icon {
+      font-size: 1.1rem;
+      transition: transform 0.25s ease;
+    }
+
+    .back-btn:hover .btn-icon {
+      transform: translateX(-4px);
+    }
+
+    /* 设备选择弹窗 */
+    .device-modal-mask {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(4, 6, 10, 0.85); backdrop-filter: blur(12px);
+      z-index: 999; display: flex; justify-content: center; align-items: center;
+    }
+
+    .device-modal {
+      background: rgba(10, 16, 28, 0.95); border: 1px solid var(--primary-cyan);
+      box-shadow: 0 0 30px rgba(0, 243, 255, 0.3); border-radius: 12px;
+      padding: 30px; text-align: center; max-width: 90%; width: 400px;
+    }
+
+    .device-modal h2 { font-family: var(--font-digital); color: var(--primary-cyan); font-size: 1.2rem; margin-bottom: 10px; }
+    .device-modal p { font-size: 0.9rem; color: #94a3b8; margin-bottom: 25px; }
+
+    .device-options { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; }
+
+    .device-card {
+      flex: 1; min-width: 120px; padding: 15px 10px; background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(0,243,255,0.2); border-radius: 8px; cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .device-card:hover, .device-card:active {
+      background: rgba(0, 243, 255, 0.15); border-color: var(--primary-cyan);
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.4);
+    }
+    .device-card .icon { font-size: 2rem; display: block; margin-bottom: 8px; }
+    .device-card .title { font-weight: bold; color: #fff; font-size: 0.95rem; }
+
+    /* 控制面板展开按钮（位置调整至返回按钮下方） */
+    .hud-toggle-btn {
+      position: absolute; top: 70px; left: 20px; z-index: 10;
+      background: rgba(10, 16, 28, 0.9); border: 1px solid var(--primary-cyan);
+      color: var(--primary-cyan); padding: 8px 14px; border-radius: 6px;
+      font-family: var(--font-body); font-weight: bold; cursor: pointer;
+      box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); transition: all 0.3s ease;
+    }
+    .hud-toggle-btn:hover { background: var(--primary-cyan); color: #000; box-shadow: 0 0 25px rgba(0, 243, 255, 0.8); }
+
+    .hud-sidebar {
+      position: absolute; top: 0; left: 0; width: 360px; height: 100%; z-index: 5;
+      background: var(--card-bg); backdrop-filter: blur(15px);
+      border-right: 1px solid rgba(0, 243, 255, 0.2); padding: 120px 20px 20px 20px;
+      display: flex; flex-direction: column; gap: 15px;
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5); overflow-y: auto;
+    }
+    .hud-sidebar.collapsed { transform: translateX(-100%); }
+
+    .sidebar-header h1 { font-family: var(--font-digital); font-size: 1.2rem; color: var(--primary-cyan); }
+
+    .status-bar { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    .status-tag { padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+    .status-tag.offline { background: rgba(255, 0, 85, 0.2); color: var(--danger-red); border: 1px solid var(--danger-red); }
+    .status-tag.online { background: rgba(0, 255, 102, 0.2); color: var(--safe-green); border: 1px solid var(--safe-green); }
+
+    .cyber-btn {
+      background: linear-gradient(135deg, var(--accent-blue), var(--primary-cyan));
+      color: #000; font-family: var(--font-body); font-weight: bold;
+      border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;
+    }
+    .cyber-btn.danger { background: rgba(255, 0, 85, 0.3); color: var(--danger-red); border: 1px solid var(--danger-red); width: 100%; margin-top: 10px; }
+    .cyber-btn.mode-btn { background: rgba(0, 243, 255, 0.2); color: var(--primary-cyan); border: 1px solid var(--primary-cyan); width: 100%; margin-top: 5px; }
+
+    .metrics-card, .control-card {
+      background: rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 10px;
+    }
+
+    .metric-row { display: flex; justify-content: space-between; }
+    .metric-item { display: flex; flex-direction: column; align-items: center; }
+    .metric-item .label { font-size: 0.7rem; color: #64748b; }
+    .metric-item .value { font-family: var(--font-digital); font-size: 0.95rem; color: #fff; }
+
+    .distance-big { display: flex; justify-content: center; align-items: baseline; gap: 5px; }
+    .digital-number { font-family: var(--font-digital); font-size: 2.2rem; color: var(--primary-cyan); font-weight: 900; }
+    .unit { font-size: 1rem; color: #64748b; }
+
+    .meter-bar-bg { width: 100%; height: 8px; background: rgba(255, 255, 255, 0.05); border-radius: 4px; overflow: hidden; }
+    .meter-bar-fill { height: 100%; background: linear-gradient(90deg, var(--safe-green), var(--warning-yellow), var(--danger-red)); transition: width 0.1s; }
+
+    .control-card h2 { font-size: 0.85rem; color: var(--primary-cyan); }
+    .drive-stats p { font-size: 0.85rem; color: #94a3b8; }
+    .highlight { color: var(--primary-cyan); font-weight: bold; font-family: var(--font-digital); }
+
+    .key-pad { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 5px; }
+    .key-row { display: flex; gap: 4px; }
+    .key {
+      width: 32px; height: 32px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px; display: flex; justify-content: center; align-items: center; font-family: var(--font-digital);
+    }
+    .key.active { background: var(--primary-cyan); color: #000; box-shadow: 0 0 10px var(--primary-cyan); }
+
+    .console-footer { font-family: monospace; font-size: 0.75rem; color: #00ff66; word-break: break-all; }
+
+    /* --- 移动端触控 UI --- */
+    .mobile-controls {
+      position: absolute; bottom: 30px; left: 0; right: 0; z-index: 10;
+      display: none; justify-content: space-between; align-items: flex-end;
+      padding: 0 30px; pointer-events: none;
+    }
+
+    .joystick-zone {
+      width: 130px; height: 130px; border-radius: 50%;
+      background: rgba(10, 16, 28, 0.6); border: 2px solid rgba(0, 243, 255, 0.4);
+      backdrop-filter: blur(8px); position: relative; pointer-events: auto;
+      touch-action: none; box-shadow: 0 0 20px rgba(0, 243, 255, 0.15);
+    }
+
+    .joystick-handle {
+      width: 50px; height: 50px; border-radius: 50%;
+      background: radial-gradient(circle, var(--primary-cyan), var(--accent-blue));
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      box-shadow: 0 0 15px var(--primary-cyan); transition: transform 0.05s ease-out;
+    }
+
+    .mobile-action-btns {
+      display: flex; flex-direction: column; gap: 15px; pointer-events: auto;
+    }
+
+    .action-btn {
+      width: 65px; height: 65px; border-radius: 50%; border: 2px solid;
+      display: flex; justify-content: center; align-items: center;
+      font-family: var(--font-body); font-weight: bold; font-size: 0.9rem;
+      backdrop-filter: blur(8px); cursor: pointer;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5); transition: transform 0.1s;
+    }
+    .action-btn:active { transform: scale(0.9); }
+
+    .stop-btn { background: rgba(255, 0, 85, 0.3); border-color: var(--danger-red); color: var(--danger-red); }
+    .mode-toggle-btn { background: rgba(0, 243, 255, 0.2); border-color: var(--primary-cyan); color: var(--primary-cyan); }
+  </style>
 </head>
 <body>
-    <p>联系我们的电话：+86 15312309120</p> <br>联系我们的邮箱：yuki@soulshock.ai</p>
-    <hr style="border:0; border-top:1px solid #eef3fe; margin-top:24px;">
-        <a href="index.html" class="back-btn">← 返回主页</a>
+  <!-- 返回主页按钮 -->
+  <a href="index.html" class="back-btn" onclick="return handleBack(event)">
+    <span class="btn-icon">←</span>
+    <span class="btn-text">返回主页</span>
+  </a>
+
+  <!-- 设备选择弹窗 -->
+  <div id="device-modal-mask" class="device-modal-mask">
+    <div class="device-modal">
+      <h2>选择您的操控设备</h2>
+      <p>为了获得最佳操控体验，请选择当前使用的终端模式：</p>
+      <div class="device-options">
+        <div class="device-card" onclick="setDeviceMode('pc')">
+          <span class="icon">💻</span>
+          <span class="title">电脑端</span>
+        </div>
+        <div class="device-card" onclick="setDeviceMode('mobile')">
+          <span class="icon">📱</span>
+          <span class="title">移动端</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="three-container"></div>
+
+  <button id="hud-toggle-btn" class="hud-toggle-btn">
+    <span id="toggle-icon">◀</span> 隐藏控制面板
+  </button>
+
+  <div id="hud-sidebar" class="hud-sidebar">
+    <header class="sidebar-header">
+      <h1>CYBER-MAPPER <small>v5.0</small></h1>
+      <div class="status-bar">
+        <span id="connection-status" class="status-tag offline">未连接</span>
+        <button id="connect-btn" class="cyber-btn">建立蓝牙通讯</button>
+      </div>
+    </header>
+
+    <div class="metrics-card">
+      <div class="metric-row">
+        <div class="metric-item">
+          <span class="label">Roll (翻滚)</span>
+          <span id="roll-val" class="value">0.0°</span>
+        </div>
+        <div class="metric-item">
+          <span class="label">Pitch (俯仰)</span>
+          <span id="pitch-val" class="value">0.0°</span>
+        </div>
+        <div class="metric-item">
+          <span class="label">Yaw (航向)</span>
+          <span id="yaw-val" class="value">90.0°</span>
+        </div>
+      </div>
+      
+      <div class="distance-big">
+        <span id="distance-val" class="digital-number">---</span>
+        <span class="unit">CM</span>
+      </div>
+
+      <div class="meter-bar-bg">
+        <div id="meter-bar-fill" class="meter-bar-fill" style="width: 0%;"></div>
+      </div>
+    </div>
+
+    <div class="control-card">
+      <h2>控制模式控制 (WASD / 虚拟摇杆)</h2>
+      <div class="drive-stats">
+        <p>虚拟推算位移: <span id="calc-dist" class="highlight">0.00</span> 米</p>
+        <p>三维点云构建: <span id="point-count" class="highlight">0</span> 点</p>
+      </div>
+      <div class="key-pad">
+        <span class="key" id="key-w">W</span>
+        <div class="key-row">
+          <span class="key" id="key-a">A</span>
+          <span class="key" id="key-s">S</span>
+          <span class="key" id="key-d">D</span>
+        </div>
+      </div>
+      <button id="sidebar-mode-btn" class="cyber-btn mode-btn">切换模式 (当前: 手动)</button>
+      <button id="clear-map-btn" class="cyber-btn danger">清空 3D 轨迹与点云</button>
+    </div>
+
+    <footer class="console-footer">
+      <div id="console-log">> 系统已就绪，请选择设备模式...</div>
+    </footer>
+  </div>
+
+  <!-- 移动端触控图层 -->
+  <div id="mobile-controls" class="mobile-controls">
+    <div id="joystick-zone" class="joystick-zone">
+      <div id="joystick-handle" class="joystick-handle"></div>
+    </div>
+
+    <div class="mobile-action-btns">
+      <div id="mobile-mode-btn" class="action-btn mode-toggle-btn">手动</div>
+      <div id="mobile-stop-btn" class="action-btn stop-btn">急停</div>
+    </div>
+  </div>
+
+  <script>
+    let port = null, reader = null;
+    let roll = 0, pitch = 0, yaw = 90;
+    let distance = 200;
+
+    const carPosition = new THREE.Vector3(0, 0, 0); 
+    let totalDrivenDistance = 0;                  
+    const DRIVE_SPEED = 4.0;       // 移动速度 (m/s)
+    const STEER_SPEED = 90.0;      // 转向角速度 (°/s)
+    const activeKeys = {};
+
+    let isAutoMode = false;
+    let joystickVector = { x: 0, y: 0 };
+
+    let scene, camera, renderer, controls;
+    let carGroup, sensorCone, coneMaterial, radarDome;
+    let pathLine, pathGeometry;
+    const pathPoints = []; 
+    let pointCloud, pointGeometry;
+    const pointPositions = []; 
+
+    const sidebar = document.getElementById('hud-sidebar');
+    const toggleBtn = document.getElementById('hud-toggle-btn');
+    const connectBtn = document.getElementById('connect-btn');
+    const statusTag = document.getElementById('connection-status');
+    const mobileControls = document.getElementById('mobile-controls');
+
+    // 处理返回主页防误触与断开逻辑
+    function handleBack(event) {
+      if (typeof triggerEmergencyStop === 'function') {
+        triggerEmergencyStop();
+      }
+
+      if (port) {
+        const confirmLeave = confirm("⚠️ 蓝牙仍在连接中，确定要断开并返回主页吗？");
+        if (!confirmLeave) {
+          event.preventDefault();
+          return false;
+        }
+
+        try {
+          if (reader) reader.cancel();
+          if (port.close) port.close();
+        } catch (err) {
+          console.warn("断开连接异常:", err);
+        }
+      }
+      return true;
+    }
+
+    // 设备选择函数
+    function setDeviceMode(mode) {
+      document.getElementById('device-modal-mask').style.display = 'none';
+      if (mode === 'mobile') {
+        mobileControls.style.display = 'flex';
+        sidebar.classList.add('collapsed');
+        toggleBtn.innerHTML = '<span id="toggle-icon">▶</span> 展开控制面板';
+        log('📱 已选择【移动端模式】：请通过左下角摇杆操控');
+      } else {
+        mobileControls.style.display = 'none';
+        sidebar.classList.remove('collapsed');
+        toggleBtn.innerHTML = '<span id="toggle-icon">◀</span> 隐藏控制面板';
+        log('💻 已选择【电脑端模式】：支持 WASD 键盘方向操作');
+      }
+    }
+
+    toggleBtn.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+      toggleBtn.innerHTML = sidebar.classList.contains('collapsed') 
+        ? '<span id="toggle-icon">▶</span> 展开控制面板' 
+        : '<span id="toggle-icon">◀</span> 隐藏控制面板';
+    });
+
+    // 蓝牙串口连接与断开
+    connectBtn.addEventListener('click', async () => {
+      if (!('serial' in navigator)) {
+        alert('请使用支持 Web Serial 的浏览器（如 Chrome / Edge）！');
+        return;
+      }
+
+      if (port) {
+        try {
+          if (reader) {
+            await reader.cancel();
+            reader.releaseLock();
+            reader = null;
+          }
+          await port.close();
+          port = null;
+          statusTag.textContent = '未连接';
+          statusTag.className = 'status-tag offline';
+          connectBtn.textContent = '建立蓝牙通讯';
+          log('通讯已安全断开');
+        } catch (err) {
+          log('断开错误: ' + err.message);
+          port = null; 
+        }
+        return;
+      }
+
+      try {
+        port = await navigator.serial.requestPort();
+        await port.open({ baudRate: 9600 });
+        statusTag.textContent = '已连接';
+        statusTag.className = 'status-tag online';
+        connectBtn.textContent = '断开通讯';
+        log('蓝牙串口连接成功！正等待数据...');
+        readSerialStream();
+      } catch (err) {
+        log('连接错误: ' + err.message);
+        port = null;
+      }
+    });
+
+    async function readSerialStream() {
+      const textDecoder = new TextDecoderStream();
+      port.readable.pipeTo(textDecoder.writable);
+      reader = textDecoder.readable.getReader();
+
+      let buffer = '';
+      while (true) {
+        try {
+          const { value, done } = await reader.read();
+          if (done) { reader.releaseLock(); break; }
+          if (value) {
+            buffer += value;
+            let lines = buffer.split('\n');
+            buffer = lines.pop();
+            for (let line of lines) parseData(line.trim());
+          }
+        } catch (err) {
+          log('数据传输中断: ' + err.message);
+          break;
+        }
+      }
+    }
+
+    function parseData(data) {
+      if (data.startsWith('CAR:')) {
+        const parts = data.replace('CAR:', '').split(',');
+        if (parts.length >= 4) {
+          roll = parseFloat(parts[0]);
+          pitch = parseFloat(parts[1]);
+          distance = parseInt(parts[3]);
+
+          const rollElem = document.getElementById('roll-val');
+          const pitchElem = document.getElementById('pitch-val');
+          const yawElem = document.getElementById('yaw-val');
+          const distElem = document.getElementById('distance-val');
+          const barElem = document.getElementById('meter-bar-fill');
+
+          if (rollElem) rollElem.textContent = roll.toFixed(1) + '°';
+          if (pitchElem) pitchElem.textContent = pitch.toFixed(1) + '°';
+          if (yawElem) yawElem.textContent = yaw.toFixed(1) + '°';
+          if (distElem) distElem.textContent = distance + ' cm';
+          if (barElem) barElem.style.width = Math.min((distance / 200) * 100, 100) + '%';
+        }
+      }
+    }
+
+    async function sendCmd(cmd) {
+      if (port && port.writable) {
+        try {
+          const writer = port.writable.getWriter();
+          await writer.write(new TextEncoder().encode(cmd));
+          writer.releaseLock();
+        } catch(e) {}
+      }
+    }
+
+    // 构建 3D 赛博小车模型
+    function buildCyberCar() {
+      const car = new THREE.Group();
+
+      const bodyGeo = new THREE.BoxGeometry(1.6, 0.4, 2.8);
+      const bodyMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.1, metalness: 0.9 });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 0.3;
+      car.add(body);
+
+      const cabinGeo = new THREE.CylinderGeometry(0.6, 0.8, 1.2, 4);
+      const cabinMat = new THREE.MeshStandardMaterial({ color: 0x00f3ff, roughness: 0.1, metalness: 0.5, transparent: true, opacity: 0.6 });
+      const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+      cabin.rotation.y = Math.PI / 4;
+      cabin.position.set(0, 0.7, 0.1);
+      cabin.scale.set(1.1, 0.6, 1.6);
+      car.add(cabin);
+
+      const wheelGeo = new THREE.CylinderGeometry(0.35, 0.35, 0.25, 24);
+      wheelGeo.rotateZ(Math.PI / 2);
+      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+      const rimMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
+
+      const wheelPositions = [
+        [-0.9, 0.35, 0.9], [0.9, 0.35, 0.9],   
+        [-0.9, 0.35, -0.9], [0.9, 0.35, -0.9]   
+      ];
+
+      wheelPositions.forEach(pos => {
+        const w = new THREE.Mesh(wheelGeo, wheelMat);
+        w.position.set(...pos);
+        const rim = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.3, 0.3), rimMat);
+        w.add(rim);
+        car.add(w);
+      });
+
+      const headLightMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff });
+      const headLight = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.1, 0.1), headLightMat);
+      headLight.position.set(0, 0.45, -1.41);
+      car.add(headLight);
+
+      const tailLightMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
+      const tailLight = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.1), tailLightMat);
+      tailLight.position.set(0, 0.45, 1.41);
+      car.add(tailLight);
+
+      radarDome = new THREE.Mesh(
+        new THREE.SphereGeometry(0.18, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0x00f3ff, wireframe: true })
+      );
+      radarDome.position.set(0, 1.05, -0.2);
+      car.add(radarDome);
+
+      return car;
+    }
+
+    function initThree() {
+      const container = document.getElementById('three-container');
+
+      scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x04060a, 0.012);
+
+      camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 12, 16);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(renderer.domElement);
+
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+      const dirLight = new THREE.DirectionalLight(0x00f3ff, 1.8);
+      dirLight.position.set(12, 20, 15);
+      scene.add(dirLight);
+
+      const grid = new THREE.GridHelper(60, 60, 0x00f3ff, 0x111c2e);
+      grid.position.y = -0.01;
+      scene.add(grid);
+
+      carGroup = buildCyberCar();
+      scene.add(carGroup);
+
+      const coneGeo = new THREE.ConeGeometry(0.9, 3.5, 16);
+      coneGeo.rotateX(Math.PI / 2);
+      coneGeo.translate(0, 0.45, -3.15);
+      coneMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff66, wireframe: true, transparent: true, opacity: 0.45 });
+      sensorCone = new THREE.Mesh(coneGeo, coneMaterial);
+      carGroup.add(sensorCone);
+
+      pathGeometry = new THREE.BufferGeometry();
+      pathGeometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+      pathLine = new THREE.Line(pathGeometry, new THREE.LineBasicMaterial({ color: 0x00f3ff, linewidth: 2 }));
+      scene.add(pathLine);
+
+      pointGeometry = new THREE.BufferGeometry();
+      pointGeometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+      pointCloud = new THREE.Points(pointGeometry, new THREE.PointsMaterial({ color: 0xff0055, size: 0.28, transparent: true, opacity: 0.9 }));
+      scene.add(pointCloud);
+
+      window.addEventListener('resize', onWindowResize);
+      
+      let lastFrameTime = performance.now();
+      function animate(now) {
+        requestAnimationFrame(animate);
+
+        const dt = (now - lastFrameTime) / 1000.0;
+        lastFrameTime = now;
+
+        if (radarDome) radarDome.rotation.y += 2.0 * dt;
+
+        if (isAutoMode) {
+          handleAutoDriveLogic(dt);
+        } else {
+          handleManualDriveLogic(dt);
+        }
+
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      requestAnimationFrame(animate);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function updateCarPose() {
+      if (!carGroup) return;
+
+      const euler = new THREE.Euler(
+        THREE.MathUtils.degToRad(pitch),
+        THREE.MathUtils.degToRad(yaw - 90),
+        THREE.MathUtils.degToRad(roll),
+        'YXZ'
+      );
+      carGroup.quaternion.setFromEuler(euler);
+
+      const scaleZ = distance / 100.0;
+      sensorCone.scale.set(1, 1, Math.max(scaleZ, 0.1));
+      
+      if (distance < 20) coneMaterial.color.setHex(0xff0055);
+      else if (distance < 50) coneMaterial.color.setHex(0xffaa00);
+      else coneMaterial.color.setHex(0x00ff66);
+    }
+
+    function recordPathAndPointCloud(forwardVec) {
+      carGroup.position.copy(carPosition);
+
+      pathPoints.push(carPosition.x, carPosition.y + 0.1, carPosition.z);
+      pathGeometry.setAttribute('position', new THREE.Float32BufferAttribute(pathPoints, 3));
+
+      if (distance < 200) {
+        const distMeter = distance / 100.0;
+        const obsPos = carPosition.clone().addScaledVector(forwardVec, distMeter + 1.4);
+        pointPositions.push(obsPos.x, obsPos.y + 0.4, obsPos.z);
+        pointGeometry.setAttribute('position', new THREE.Float32BufferAttribute(pointPositions, 3));
+      }
+
+      const calcDistElem = document.getElementById('calc-dist');
+      const pointCountElem = document.getElementById('point-count');
+      const yawElem = document.getElementById('yaw-val');
+
+      if (calcDistElem) calcDistElem.textContent = totalDrivenDistance.toFixed(2);
+      if (pointCountElem) pointCountElem.textContent = pointPositions.length / 3;
+      if (yawElem) yawElem.textContent = yaw.toFixed(1) + '°';
+    }
+
+    // 手动操控运动解算
+    function handleManualDriveLogic(dt) {
+      let isMoving = false;
+
+      let steerInput = 0; 
+      let moveInput = 0;  
+
+      if (activeKeys['a']) steerInput += 1;
+      if (activeKeys['d']) steerInput -= 1;
+      if (activeKeys['w']) moveInput += 1;
+      if (activeKeys['s']) moveInput -= 1;
+
+      if (Math.abs(joystickVector.x) > 0.1) steerInput -= joystickVector.x;
+      if (Math.abs(joystickVector.y) > 0.1) moveInput += joystickVector.y;
+
+      steerInput = THREE.MathUtils.clamp(steerInput, -1, 1);
+      moveInput = THREE.MathUtils.clamp(moveInput, -1, 1);
+
+      if (Math.abs(steerInput) > 0.05) {
+        yaw += steerInput * STEER_SPEED * dt;
+        if (yaw >= 360) yaw -= 360;
+        if (yaw < 0) yaw += 360;
+        isMoving = true;
+      }
+
+      updateCarPose();
+
+      const forwardVec = new THREE.Vector3(0, 0, -1).applyQuaternion(carGroup.quaternion);
+      forwardVec.y = 0; 
+      forwardVec.normalize();
+
+      if (Math.abs(moveInput) > 0.05) {
+        const dist = moveInput * DRIVE_SPEED * dt;
+        carPosition.addScaledVector(forwardVec, dist);
+        totalDrivenDistance += Math.abs(dist);
+        isMoving = true;
+      }
+
+      if (isMoving) {
+        recordPathAndPointCloud(forwardVec);
+      }
+    }
+
+    // 自动巡航算法逻辑
+    let lastAutoCmd = '';
+    function handleAutoDriveLogic(dt) {
+      let currentCmd = 'F';
+
+      if (distance > 10) {
+        currentCmd = 'F';
+        
+        updateCarPose();
+        const forwardVec = new THREE.Vector3(0, 0, -1).applyQuaternion(carGroup.quaternion);
+        forwardVec.y = 0; forwardVec.normalize();
+
+        carPosition.addScaledVector(forwardVec, DRIVE_SPEED * dt);
+        totalDrivenDistance += DRIVE_SPEED * dt;
+        recordPathAndPointCloud(forwardVec);
+      } else {
+        currentCmd = 'L';
+        
+        yaw += STEER_SPEED * dt;
+        if (yaw >= 360) yaw -= 360;
+
+        updateCarPose();
+        const forwardVec = new THREE.Vector3(0, 0, -1).applyQuaternion(carGroup.quaternion);
+        forwardVec.y = 0; forwardVec.normalize();
+        recordPathAndPointCloud(forwardVec);
+      }
+
+      if (currentCmd !== lastAutoCmd) {
+        sendCmd(currentCmd);
+        lastAutoCmd = currentCmd;
+      }
+    }
+
+    // 状态下发指令
+    let lastSentCmd = 'S';
+    function evalAndSendManualCmd() {
+      if (isAutoMode) return;
+
+      let cmd = 'S';
+      let steerInput = 0;
+      let moveInput = 0;
+
+      if (activeKeys['a']) steerInput -= 1;
+      if (activeKeys['d']) steerInput += 1;
+      if (activeKeys['w']) moveInput += 1;
+      if (activeKeys['s']) moveInput -= 1;
+
+      if (Math.abs(joystickVector.x) > 0.25) steerInput += joystickVector.x;
+      if (Math.abs(joystickVector.y) > 0.25) moveInput += joystickVector.y;
+
+      if (moveInput > 0.25) {
+        if (steerInput < -0.25) cmd = 'L';
+        else if (steerInput > 0.25) cmd = 'R';
+        else cmd = 'F';
+      } else if (moveInput < -0.25) {
+        if (steerInput < -0.25) cmd = 'L';
+        else if (steerInput > 0.25) cmd = 'R';
+        else cmd = 'B';
+      } else {
+        if (steerInput < -0.25) cmd = 'L';
+        else if (steerInput > 0.25) cmd = 'R';
+        else cmd = 'S';
+      }
+
+      if (cmd !== lastSentCmd) {
+        sendCmd(cmd);
+        lastSentCmd = cmd;
+      }
+    }
+
+    // 急停
+    function triggerEmergencyStop() {
+      Object.keys(activeKeys).forEach(key => activeKeys[key] = false);
+      document.querySelectorAll('.key').forEach(b => b.classList.remove('active'));
+      joystickVector = { x: 0, y: 0 };
+      resetJoystickHandle();
+      sendCmd('S');
+      lastSentCmd = 'S';
+      log('🚨 触发急停！小车电机已断电');
+    }
+
+    // 切换模式
+    function toggleControlMode() {
+      isAutoMode = !isAutoMode;
+      const statusText = isAutoMode ? '自动' : '手动';
+      document.getElementById('sidebar-mode-btn').textContent = `切换模式 (当前: ${statusText})`;
+      document.getElementById('mobile-mode-btn').textContent = statusText;
+
+      if (isAutoMode) {
+        log('🤖 已开启【自动巡航模式】');
+      } else {
+        triggerEmergencyStop();
+        log('🎮 已切换回【手动操控模式】');
+      }
+    }
+
+    document.getElementById('mobile-stop-btn').addEventListener('click', triggerEmergencyStop);
+    document.getElementById('mobile-mode-btn').addEventListener('click', toggleControlMode);
+    document.getElementById('sidebar-mode-btn').addEventListener('click', toggleControlMode);
+
+    // 虚拟摇杆控制
+    const joystickZone = document.getElementById('joystick-zone');
+    const joystickHandle = document.getElementById('joystick-handle');
+    let joystickTouchId = null;
+
+    function resetJoystickHandle() {
+      joystickHandle.style.transform = `translate(-50%, -50%)`;
+      joystickVector = { x: 0, y: 0 };
+      evalAndSendManualCmd();
+    }
+
+    function handleJoystickMove(clientX, clientY) {
+      const rect = joystickZone.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      let dx = clientX - centerX;
+      let dy = clientY - centerY;
+      const maxRadius = rect.width / 2;
+
+      const distance = Math.hypot(dx, dy);
+      if (distance > maxRadius) {
+        dx = (dx / distance) * maxRadius;
+        dy = (dy / distance) * maxRadius;
+      }
+
+      joystickHandle.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+      joystickVector.x = dx / maxRadius;
+      joystickVector.y = -(dy / maxRadius);
+
+      evalAndSendManualCmd();
+    }
+
+    joystickZone.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (joystickTouchId !== null) return;
+      const touch = e.changedTouches[0];
+      joystickTouchId = touch.identifier;
+      handleJoystickMove(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+      if (joystickTouchId === null) return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joystickTouchId) {
+          handleJoystickMove(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+          break;
+        }
+      }
+    }, { passive: false });
+
+    const endJoystickTouch = (e) => {
+      if (joystickTouchId === null) return;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === joystickTouchId) {
+          joystickTouchId = null;
+          resetJoystickHandle();
+          break;
+        }
+      }
+    };
+
+    window.addEventListener('touchend', endJoystickTouch);
+    window.addEventListener('touchcancel', endJoystickTouch);
+
+    // 键盘监听
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        triggerEmergencyStop();
+        return;
+      }
+
+      if (k === 'v') {
+        toggleControlMode();
+        return;
+      }
+
+      if (['w', 'a', 's', 'd'].includes(k) && !activeKeys[k]) {
+        activeKeys[k] = true;
+        document.getElementById(`key-${k}`)?.classList.add('active');
+        evalAndSendManualCmd();
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const k = e.key.toLowerCase();
+      if (['w', 'a', 's', 'd'].includes(k)) {
+        activeKeys[k] = false;
+        document.getElementById(`key-${k}`)?.classList.remove('active');
+        evalAndSendManualCmd();
+      }
+    });
+
+    // 清除地图
+    document.getElementById('clear-map-btn').addEventListener('click', () => {
+      pathPoints.length = 0;
+      pointPositions.length = 0;
+      pathGeometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+      pointGeometry.setAttribute('position', new THREE.Float32BufferAttribute([], 3));
+      totalDrivenDistance = 0;
+      carPosition.set(0, 0, 0);
+      carGroup.position.set(0, 0, 0);
+      document.getElementById('calc-dist').textContent = '0.00';
+      document.getElementById('point-count').textContent = '0';
+      log('已成功清空 3D 轨迹与地形障碍点云');
+    });
+
+    function log(msg) {
+      document.getElementById('console-log').textContent = `> ${msg}`;
+    }
+
+    initThree();
+  </script>
 </body>
 </html>
